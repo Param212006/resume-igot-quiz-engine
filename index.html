@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume-Driven Assessment & iGOT Engine</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f4f7f6;
+      color: #333;
+    }
+    h1 { text-align: center; color: #2c3e50; }
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    button.action-btn {
+      width: 100%;
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    button.action-btn:disabled { background: #bdc3c7; }
+    .badge {
+      display: inline-block;
+      background: #3498db;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-right: 5px;
+    }
+    #timer-banner {
+      display: none;
+      position: sticky;
+      top: 10px;
+      z-index: 100;
+      background: #2c3e50;
+      color: #ecf0f1;
+      text-align: center;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    #score-banner {
+      display: none;
+      background: #27ae60;
+      color: white;
+      text-align: center;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    #error-box {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 15px;
+      display: none;
+    }
+    .question-card {
+      background: white;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #3498db;
+    }
+    .option-label {
+      display: block;
+      margin-bottom: 8px;
+      padding: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .option-label.correct { background: #d4edda; color: #155724; font-weight: bold; }
+    .option-label.incorrect { background: #f8d7da; color: #721c24; }
+    .explanation {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background: #eef9f1;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📄 Resume Assessment & iGOT Engine</h1>
+
+  <!-- Step 1 -->
+  <div class="card" id="step-1-card">
+    <h3>Step 1: Upload Your Resume</h3>
+    <form id="resume-form">
+      <input type="file" id="resume-file" accept=".pdf" required />
+      <button type="submit" id="analyze-btn" class="action-btn">Analyze Resume & Pick Section</button>
+    </form>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="card" id="step-2-card" style="display:none;">
+    <h3>Step 2: Resume Matched Assessment</h3>
+    <div id="analysis-results"></div>
+    <br>
+    <button id="generate-quiz-btn" class="action-btn">Generate 20-Question Assessment</button>
+  </div>
+
+  <div id="error-box"></div>
+  <div id="timer-banner">⏱️ Time Remaining: <span id="timer-clock">15:00</span></div>
+  <div id="score-banner"></div>
+  
+  <button id="cert-btn" class="action-btn" style="display:none; background-color: #27ae60; margin-bottom: 20px;" onclick="generateCertificate()">
+    🎓 Download Completion Certificate (PDF)
+  </button>
+
+  <div id="quiz-container"></div>
+  <button id="score-btn" class="action-btn" style="display:none;" onclick="calculateScore()">Submit Quiz & Show Score</button>
+
+  <script src="script.js"></script>
+</body>
+</html>

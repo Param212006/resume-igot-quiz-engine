@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pypdf
+pdfplumber
+groq
+dirtyjson
+python-multipart
