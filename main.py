@@ -7,7 +7,7 @@ import secrets
 from datetime import datetime
 from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
@@ -167,19 +167,23 @@ async def analyze_resume(file: UploadFile = File(...)):
         if not resume_text:
             return {"status": "error", "message": "Could not extract text from uploaded PDF."}
 
-        prompt = f"""Analyze this resume and classify expertise into ONE of these categories:
-1. "Science & Biology" -> recommended_pdf: "sample.pdf"
-2. "AI & Machine Learning" -> recommended_pdf: "sample_ai.pdf"
-3. "World History & Social Sciences" -> recommended_pdf: "sample_history.pdf"
+        # Get list of existing source PDFs in root directory
+        available_files = [f for f in os.listdir('.') if f.endswith('.pdf')]
+        if not available_files:
+            available_files = ["sample_ai.pdf"]
+
+        file_list_str = ", ".join([f'"{f}"' for f in available_files])
+
+        prompt = f"""Analyze this resume and match it to ONE of the available reference material PDF files: [{file_list_str}].
 
 Return ONLY a valid JSON object.
 
 Format:
 {{
-  "detected_domain": "AI & Machine Learning",
-  "key_skills": ["Python", "FastAPI", "Machine Learning"],
-  "recommended_pdf": "sample_ai.pdf",
-  "reasoning": "Candidate displays experience in programming and artificial intelligence."
+  "detected_domain": "Domain Name Here",
+  "key_skills": ["Skill 1", "Skill 2"],
+  "recommended_pdf": "{available_files[0]}",
+  "reasoning": "Candidate displays experience relevant to this module."
 }}
 
 Resume Text:
@@ -265,7 +269,6 @@ Format:
         if match:
             recommended_courses = safe_parse_json(match.group(0))
 
-            # Persist candidate submission in SQLite database
             try:
                 conn = sqlite3.connect(DB_FILE)
                 cursor = conn.cursor()
@@ -290,7 +293,40 @@ Format:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# --- ADMIN DASHBOARD ENDPOINTS ---
+# --- ADMIN API & SOURCE FILE MANAGEMENT ENDPOINTS ---
+
+@app.get("/api/admin/sources")
+def get_source_files(username: str = Depends(authenticate_admin)):
+    pdf_files = [f for f in os.listdir('.') if f.endswith('.pdf')]
+    files_info = []
+    for f in pdf_files:
+        size_kb = round(os.path.getsize(f) / 1024, 2)
+        files_info.append({"filename": f, "size_kb": f"{size_kb} KB"})
+    return {"status": "success", "files": files_info}
+
+@app.post("/api/admin/sources/upload")
+async def upload_source_file(file: UploadFile = File(...), username: str = Depends(authenticate_admin)):
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+    
+    file_path = os.path.join(".", file.filename)
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+        
+    return {"status": "success", "message": f"Successfully uploaded {file.filename}"}
+
+@app.delete("/api/admin/sources/delete/{filename}")
+def delete_source_file(filename: str, username: str = Depends(authenticate_admin)):
+    if not filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Invalid file type.")
+    
+    file_path = os.path.join(".", filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return {"status": "success", "message": f"Deleted {filename}"}
+    else:
+        raise HTTPException(status_code=404, detail="File not found.")
 
 @app.get("/api/admin/submissions")
 def get_admin_submissions(username: str = Depends(authenticate_admin)):
@@ -324,12 +360,16 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background: #f8f9fa; color: #2c3e50; }
         .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         h1 { color: #1a252c; margin: 0; }
-        .export-btn { background: #27ae60; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .btn { background: #3498db; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .export-btn { background: #27ae60; }
         .export-btn:hover { background: #219653; }
+        .delete-btn { background: #e74c3c; padding: 5px 10px; font-size: 12px; }
+        .delete-btn:hover { background: #c0392b; }
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #3498db; }
         .card h3 { margin: 0 0 10px 0; color: #7f8c8d; font-size: 14px; }
         .card p { margin: 0; font-size: 28px; font-weight: bold; }
+        .section-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 30px; }
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         th { background: #2c3e50; color: white; }
@@ -341,9 +381,9 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
       <div class="header-container">
         <div>
           <h1>🏛️ iGOT Assessment Admin Dashboard</h1>
-          <p style="margin: 5px 0 0 0;">Real-time analytics and candidate assessment logs.</p>
+          <p style="margin: 5px 0 0 0;">Real-time analytics, candidate logs & source file management.</p>
         </div>
-        <button class="export-btn" onclick="exportTableToCSV('candidate_submissions.csv')">📥 Export CSV</button>
+        <button class="btn export-btn" onclick="exportTableToCSV('candidate_submissions.csv')">📥 Export CSV</button>
       </div>
       
       <div class="stats-grid">
@@ -361,25 +401,101 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
         </div>
       </div>
 
-      <h2>Candidate Submissions</h2>
-      <table id="submissions-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Candidate Name</th>
-            <th>Domain</th>
-            <th>Score</th>
-            <th>Timestamp</th>
-            <th>Recommended iGOT Courses</th>
-          </tr>
-        </thead>
-        <tbody id="table-body">
-          <tr><td colspan="6">Loading candidate logs...</td></tr>
-        </tbody>
-      </table>
+      <!-- Source File Management Section -->
+      <div class="section-card">
+        <h2>📁 Assessment Source PDFs</h2>
+        <p style="font-size: 14px; color: #666;">Upload or delete reference PDFs used to generate domain quizzes.</p>
+        
+        <form id="upload-form" style="margin-bottom: 20px; display: flex; gap: 10px;">
+          <input type="file" id="pdf-input" accept=".pdf" required style="padding: 8px; background: #f1f5f9; border-radius: 4px;" />
+          <button type="submit" class="btn">Upload New PDF</button>
+        </form>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>File Size</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="sources-body">
+            <tr><td colspan="3">Loading source files...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Candidate Submissions Section -->
+      <div class="section-card">
+        <h2>Candidate Submissions</h2>
+        <table id="submissions-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Candidate Name</th>
+              <th>Domain</th>
+              <th>Score</th>
+              <th>Timestamp</th>
+              <th>Recommended iGOT Courses</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr><td colspan="6">Loading candidate logs...</td></tr>
+          </tbody>
+        </table>
+      </div>
 
       <script>
         let rawSubmissionsData = [];
+
+        async function loadSources() {
+          try {
+            const res = await fetch('/api/admin/sources');
+            const result = await res.json();
+            if(result.status === 'success') {
+              const tbody = document.getElementById('sources-body');
+              tbody.innerHTML = '';
+              result.files.forEach(file => {
+                tbody.innerHTML += `
+                  <tr>
+                    <td><strong>${file.filename}</strong></td>
+                    <td>${file.size_kb}</td>
+                    <td><button class="btn delete-btn" onclick="deleteSource('${file.filename}')">🗑️ Delete</button></td>
+                  </tr>
+                `;
+              });
+            }
+          } catch(err) { console.error(err); }
+        }
+
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const fileInput = document.getElementById('pdf-input');
+          if(!fileInput.files[0]) return;
+
+          const formData = new FormData();
+          formData.append('file', fileInput.files[0]);
+
+          const res = await fetch('/api/admin/sources/upload', { method: 'POST', body: formData });
+          const data = await res.json();
+          if(data.status === 'success') {
+            alert(data.message);
+            fileInput.value = '';
+            loadSources();
+          } else {
+            alert(data.detail || 'Upload failed');
+          }
+        });
+
+        async function deleteSource(filename) {
+          if(!confirm(`Are you sure you want to delete ${filename}?`)) return;
+          const res = await fetch(`/api/admin/sources/delete/${filename}`, { method: 'DELETE' });
+          const data = await res.json();
+          if(data.status === 'success') {
+            alert(data.message);
+            loadSources();
+          }
+        }
 
         async function loadAdminData() {
           try {
@@ -416,9 +532,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
                 `;
               });
             }
-          } catch(err) {
-            console.error(err);
-          }
+          } catch(err) { console.error(err); }
         }
 
         function exportTableToCSV(filename) {
@@ -453,6 +567,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
           document.body.removeChild(downloadLink);
         }
 
+        loadSources();
         loadAdminData();
       </script>
     </body>
