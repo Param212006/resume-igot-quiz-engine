@@ -3,6 +3,7 @@ let timerInterval = null;
 let timeRemaining = 15 * 60;
 let matchedPdfFilename = "sample_ai.pdf";
 
+let currentUserId = "KARM-UNKNOWN";
 let candidateName = "Candidate";
 let passedDomain = "AI & Machine Learning";
 
@@ -34,15 +35,12 @@ document.getElementById('resume-form').addEventListener('submit', async (e) => {
 
   if (!fileInput.files[0]) return;
 
-  const uploadedFile = fileInput.files[0];
-  candidateName = uploadedFile.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').toUpperCase();
-
   errorBox.style.display = 'none';
   analyzeBtn.disabled = true;
   analyzeBtn.textContent = 'Analyzing Resume...';
 
   const formData = new FormData();
-  formData.append('file', uploadedFile);
+  formData.append('file', fileInput.files[0]);
 
   try {
     const response = await fetch(`${API_BASE}/api/analyze-resume`, {
@@ -56,10 +54,14 @@ document.getElementById('resume-form').addEventListener('submit', async (e) => {
       const a = data.analysis;
       matchedPdfFilename = a.recommended_pdf;
       passedDomain = a.detected_domain || "Technical Assessment";
+      candidateName = a.candidate_name || "Candidate";
+      currentUserId = a.user_id || `KARM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const skillsHTML = (a.key_skills || []).map(s => `<span class="badge">${s}</span>`).join(' ');
 
       document.getElementById('analysis-results').innerHTML = `
+        <p><strong>Candidate User ID:</strong> <span class="badge" style="background:#8e44ad;">${currentUserId}</span></p>
+        <p><strong>Candidate Name:</strong> ${candidateName}</p>
         <p><strong>Detected Domain:</strong> ${a.detected_domain}</p>
         <p><strong>Key Skills:</strong> ${skillsHTML}</p>
         <p><strong>Matched Section File:</strong> <code>${a.recommended_pdf}</code></p>
@@ -244,6 +246,7 @@ async function fetchIGOTRecommendations(scorePercentage, incorrectList) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        user_id: currentUserId,
         candidate_name: candidateName,
         detected_domain: passedDomain,
         score_percentage: scorePercentage,
@@ -313,31 +316,36 @@ function generateCertificate() {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(30);
   doc.setTextColor(44, 62, 80);
-  doc.text("CERTIFICATE OF ACHIEVEMENT", 400, 110, { align: "center" });
+  doc.text("CERTIFICATE OF ACHIEVEMENT", 400, 100, { align: "center" });
+
+  doc.setFontSize(11);
+  doc.setFont("courier", "bold");
+  doc.setTextColor(142, 68, 173);
+  doc.text(`CANDIDATE ID: ${currentUserId}`, 400, 130, { align: "center" });
 
   doc.setFontSize(13);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(127, 140, 141);
-  doc.text("THIS IS PROUDLY PRESENTED TO", 400, 160, { align: "center" });
+  doc.text("THIS IS PROUDLY PRESENTED TO", 400, 170, { align: "center" });
 
   doc.setFontSize(26);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(41, 128, 185);
-  doc.text(candidateName, 400, 220, { align: "center" });
+  doc.text(candidateName, 400, 230, { align: "center" });
 
   doc.setLineWidth(1);
   doc.setDrawColor(189, 195, 199);
-  doc.line(250, 240, 550, 240);
+  doc.line(250, 250, 550, 250);
 
   doc.setFontSize(14);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(52, 73, 94);
-  doc.text("For successfully completing the AI technical assessment in:", 400, 290, { align: "center" });
+  doc.text("For successfully completing the AI technical assessment in:", 400, 300, { align: "center" });
 
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(39, 174, 96);
-  doc.text(passedDomain, 400, 330, { align: "center" });
+  doc.text(passedDomain, 400, 340, { align: "center" });
 
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -347,5 +355,5 @@ function generateCertificate() {
   doc.text(`Date Issued: ${today}`, 100, 490);
   doc.text("Verified by: Resume Quiz Engine AI", 700, 490, { align: "right" });
 
-  doc.save(`${candidateName.replace(/\s+/g, '_')}_Certificate.pdf`);
+  doc.save(`${currentUserId}_${candidateName.replace(/\s+/g, '_')}_Certificate.pdf`);
 }

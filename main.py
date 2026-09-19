@@ -4,6 +4,7 @@ import io
 import re
 import sqlite3
 import secrets
+import uuid
 from datetime import datetime
 from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
@@ -49,6 +50,7 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS submissions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
             candidate_name TEXT,
             detected_domain TEXT,
             score_percentage REAL,
@@ -79,6 +81,7 @@ class IncorrectQuestion(BaseModel):
     explanation: str
 
 class CourseRecommendationRequest(BaseModel):
+    user_id: Optional[str] = None
     candidate_name: Optional[str] = "Candidate"
     detected_domain: str
     score_percentage: float
@@ -167,19 +170,24 @@ async def analyze_resume(file: UploadFile = File(...)):
         if not resume_text:
             return {"status": "error", "message": "Could not extract text from uploaded PDF."}
 
-        # Get list of existing source PDFs in root directory
+        # Generate unique candidate User ID
+        unique_user_id = f"KARM-{uuid.uuid4().hex[:6].upper()}"
+
         available_files = [f for f in os.listdir('.') if f.endswith('.pdf')]
         if not available_files:
             available_files = ["sample_ai.pdf"]
 
         file_list_str = ", ".join([f'"{f}"' for f in available_files])
 
-        prompt = f"""Analyze this resume and match it to ONE of the available reference material PDF files: [{file_list_str}].
+        prompt = f"""Analyze this resume and perform two tasks:
+1. Extract the candidate's full legal name from the resume text. If not explicitly found, return "Candidate".
+2. Match the candidate's expertise to ONE of the available reference PDF files: [{file_list_str}].
 
 Return ONLY a valid JSON object.
 
 Format:
 {{
+  "candidate_name": "Full Name",
   "detected_domain": "Domain Name Here",
   "key_skills": ["Skill 1", "Skill 2"],
   "recommended_pdf": "{available_files[0]}",
@@ -192,7 +200,9 @@ Resume Text:
         raw_response = call_groq_llm(prompt)
         match = re.search(r'\{.*\}', raw_response, re.DOTALL)
         if match:
-            return {"status": "success", "analysis": safe_parse_json(match.group(0))}
+            analysis = safe_parse_json(match.group(0))
+            analysis["user_id"] = unique_user_id
+            return {"status": "success", "analysis": analysis}
         return {"status": "error", "message": "Failed to parse analysis response."}
 
     except Exception as e:
@@ -236,6 +246,7 @@ Source Text:
 @app.post("/api/recommend-igot-courses")
 async def recommend_igot_courses(payload: CourseRecommendationRequest):
     try:
+        user_id = payload.user_id or f"KARM-{uuid.uuid4().hex[:6].upper()}"
         missed_summary = ""
         for idx, item in enumerate(payload.incorrect_questions, 1):
             missed_summary += f"{idx}. Question: {item.question}\n   User Selected: {item.user_answer}\n   Correct Answer: {item.correct_answer}\n   Explanation: {item.explanation}\n\n"
@@ -243,6 +254,8 @@ async def recommend_igot_courses(payload: CourseRecommendationRequest):
         prompt = f"""You are an HR Capacity Building Expert for India's iGOT Karmayogi platform.
 
 Candidate Context:
+- User ID: {user_id}
+- Candidate Name: {payload.candidate_name}
 - Domain: {payload.detected_domain}
 - Quiz Score: {payload.score_percentage}%
 - Missed Questions:
@@ -273,8 +286,9 @@ Format:
                 conn = sqlite3.connect(DB_FILE)
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO submissions (candidate_name, detected_domain, score_percentage, recommended_courses, timestamp) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO submissions (user_id, candidate_name, detected_domain, score_percentage, recommended_courses, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
                     (
+                        user_id,
                         payload.candidate_name,
                         payload.detected_domain,
                         payload.score_percentage,
@@ -287,7 +301,7 @@ Format:
             except Exception as db_err:
                 print("DB Insertion Error:", db_err)
 
-            return {"status": "success", "courses": recommended_courses}
+            return {"status": "success", "user_id": user_id, "courses": recommended_courses}
         return {"status": "error", "message": "Failed to parse recommendations."}
 
     except Exception as e:
@@ -332,7 +346,7 @@ def delete_source_file(filename: str, username: str = Depends(authenticate_admin
 def get_admin_submissions(username: str = Depends(authenticate_admin)):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, candidate_name, detected_domain, score_percentage, recommended_courses, timestamp FROM submissions ORDER BY id DESC")
+    cursor.execute("SELECT id, user_id, candidate_name, detected_domain, score_percentage, recommended_courses, timestamp FROM submissions ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
 
@@ -340,11 +354,12 @@ def get_admin_submissions(username: str = Depends(authenticate_admin)):
     for row in rows:
         results.append({
             "id": row[0],
-            "candidate_name": row[1],
-            "detected_domain": row[2],
-            "score_percentage": row[3],
-            "recommended_courses": json.loads(row[4]) if row[4] else [],
-            "timestamp": row[5]
+            "user_id": row[1] if row[1] else "N/A",
+            "candidate_name": row[2],
+            "detected_domain": row[3],
+            "score_percentage": row[4],
+            "recommended_courses": json.loads(row[5]) if row[5] else [],
+            "timestamp": row[6]
         })
 
     return {"status": "success", "total_submissions": len(results), "data": results}
@@ -375,6 +390,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
         th { background: #2c3e50; color: white; }
         tr:hover { background: #f1f5f9; }
         .badge { background: #e74c3c; color: white; padding: 3px 6px; border-radius: 4px; font-size: 11px; }
+        .user-id-badge { background: #8e44ad; color: white; padding: 3px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
       </style>
     </head>
     <body>
@@ -431,7 +447,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
         <table id="submissions-table">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>User ID</th>
               <th>Candidate Name</th>
               <th>Domain</th>
               <th>Score</th>
@@ -522,7 +538,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
                 const coursesHTML = item.recommended_courses.map(c => `• ${c.title} <span class="badge">${c.competency_type}</span>`).join('<br>');
                 tbody.innerHTML += `
                   <tr>
-                    <td>#${item.id}</td>
+                    <td><span class="user-id-badge">${item.user_id}</span></td>
                     <td><strong>${item.candidate_name}</strong></td>
                     <td>${item.detected_domain}</td>
                     <td><strong>${item.score_percentage}%</strong></td>
@@ -542,12 +558,12 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
           }
 
           let csv = [];
-          csv.push(["ID", "Candidate Name", "Detected Domain", "Score Percentage", "Timestamp", "Recommended Courses"].join(","));
+          csv.push(["User ID", "Candidate Name", "Detected Domain", "Score Percentage", "Timestamp", "Recommended Courses"].join(","));
 
           rawSubmissionsData.forEach(item => {
             const courseList = item.recommended_courses.map(c => c.title).join("; ");
             const row = [
-              `"${item.id}"`,
+              `"${item.user_id}"`,
               `"${item.candidate_name.replace(/"/g, '""')}"`,
               `"${item.detected_domain.replace(/"/g, '""')}"`,
               `"${item.score_percentage}%"`,
