@@ -23,6 +23,7 @@ except ImportError:
 
 app = FastAPI(title="MoSPI Skill Intelligence API")
 
+# Enable CORS for frontend requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,7 +34,7 @@ app.add_middleware(
 
 security = HTTPBasic()
 
-# Admin Credentials (Set these in Render Environment Variables for custom credentials)
+# Admin Credentials
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "karmayogi123")
 
@@ -90,15 +91,17 @@ class CourseRecommendationRequest(BaseModel):
 
 def extract_text_from_pdf_bytes(pdf_bytes):
     extracted_text = ""
+    # Try PyPDF first
     try:
         reader = PdfReader(io.BytesIO(pdf_bytes))
         for page in reader.pages:
             text = page.extract_text()
             if text:
                 extracted_text += text + "\n"
-    except Exception:
-        extracted_text = ""
+    except Exception as e:
+        print("PyPDF extraction failed:", e)
 
+    # Fallback to pdfplumber if PyPDF returns empty string
     if not extracted_text.strip():
         try:
             with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
@@ -106,8 +109,8 @@ def extract_text_from_pdf_bytes(pdf_bytes):
                     text = page.extract_text()
                     if text:
                         extracted_text += text + "\n"
-        except Exception:
-            extracted_text = ""
+        except Exception as e:
+            print("pdfplumber extraction failed:", e)
 
     return extracted_text.strip()
 
@@ -231,10 +234,13 @@ Resume Text:
 async def generate_quiz(file: UploadFile = File(...), num_questions: int = Form(20)):
     try:
         pdf_bytes = await file.read()
+        if not pdf_bytes or len(pdf_bytes) == 0:
+            return {"status": "error", "message": "Uploaded reference file is empty. Please verify that reference PDFs exist on the server."}
+
         extracted_text = extract_text_from_pdf_bytes(pdf_bytes)
 
         if not extracted_text:
-            return {"status": "error", "message": "Could not extract text from document."}
+            return {"status": "error", "message": "Could not extract text from document. Ensure reference PDF contains readable text."}
 
         prompt = f"""Generate exactly {num_questions} multiple-choice questions from this text.
 Use single quotes inside string values.
@@ -257,10 +263,11 @@ Source Text:
         match = re.search(r'\[.*\]', raw_output, re.DOTALL)
         if match:
             return {"status": "success", "quiz": safe_parse_json(match.group(0))}
-        return {"status": "error", "message": "Failed to generate quiz JSON."}
+        return {"status": "error", "message": "Failed to parse quiz JSON from LLM response."}
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        print("Quiz Generation Error:", str(e))
+        return {"status": "error", "message": f"Server Error: {str(e)}"}
 
 @app.post("/api/recommend-igot-courses")
 async def recommend_igot_courses(payload: CourseRecommendationRequest):
