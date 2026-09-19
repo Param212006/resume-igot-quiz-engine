@@ -297,9 +297,8 @@ function renderSkillProgression(scorePercentage) {
   card.style.display = 'block';
   reassessmentCard.style.display = 'block';
 
-  // Calculate re-evaluated skill score based on baseline + quiz performance weight
   const reEvaluatedScore = Math.min(100, Math.round((initialCompetencyBreakdown.statistical * 0.4) + (scorePercentage * 0.6)));
-  const gapDelta = scorePercentage - 70; // Target passing threshold is 70%
+  const gapDelta = scorePercentage - 70;
 
   let statusBadge = scorePercentage >= 70 
     ? `<span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: 700;">Target Competency Level Achieved (≥70%)</span>`

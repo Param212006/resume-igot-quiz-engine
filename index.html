@@ -289,7 +289,10 @@
 
     <div id="error-box"></div>
 
-    <!-- Re-Evaluated Skill Progression Card -->
+    <div id="timer-banner">⏱️ Time Remaining: <span id="timer-clock">15:00</span></div>
+    <div id="score-banner"></div>
+
+    <!-- Re-Evaluated Skill Progression Card (Appears right below score banner) -->
     <div id="skill-progression-card" class="card" style="display: none; border-left: 5px solid #10b981; background: #ffffff;">
       <h3 style="color: #1e3a8a; margin-top: 0;">📈 Re-Evaluated Skill Level & Competency Progression</h3>
       <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Comparison between initial baseline resume evaluation and post-assessment re-evaluated skill level:</p>
@@ -302,9 +305,6 @@
       <p style="font-size: 13px; color: #581c87; margin-bottom: 12px;">Complete a quick validation check to verify that your iGOT Karmayogi learning pathway successfully closed your skill gap.</p>
       <button id="start-reassessment-btn" class="action-btn" style="background: #8b5cf6;" onclick="triggerReassessment()">Start Validation Re-Assessment</button>
     </div>
-
-    <div id="timer-banner">⏱️ Time Remaining: <span id="timer-clock">15:00</span></div>
-    <div id="score-banner"></div>
     
     <button id="cert-btn" class="action-btn" style="display:none; background-color: var(--accent); margin-bottom: 20px;" onclick="generateCertificate()">
       🎓 Download Official iGOT Completion Certificate (PDF)
