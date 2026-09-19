@@ -28,6 +28,19 @@ function randomizeQuizData(quizArray) {
   }));
 }
 
+function updateStepper(activeStep) {
+  for (let i = 1; i <= 4; i++) {
+    const node = document.getElementById(`node-${i}`);
+    if (node) {
+      if (i <= activeStep) {
+        node.classList.add('active');
+      } else {
+        node.classList.remove('active');
+      }
+    }
+  }
+}
+
 document.getElementById('resume-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const fileInput = document.getElementById('resume-file');
@@ -65,24 +78,43 @@ document.getElementById('resume-form').addEventListener('submit', async (e) => {
       const skillsHTML = (a.key_skills || []).map(s => `<span class="badge">${s}</span>`).join(' ');
 
       document.getElementById('analysis-results').innerHTML = `
-        <p><strong>Candidate ID:</strong> <span class="user-id-badge">${currentUserId}</span></p>
-        <p><strong>Official Name:</strong> ${candidateName}</p>
-        <p><strong>Target Cadre:</strong> ${selectedRole}</p>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; background: #f8fafc; padding: 12px; border-radius: 8px;">
+          <div><span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Candidate ID</span><br><span class="user-id-badge">${currentUserId}</span></div>
+          <div><span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Official Name</span><br><strong>${candidateName}</strong></div>
+          <div><span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700;">Designation</span><br><strong>${selectedRole}</strong></div>
+        </div>
         
-        <div style="background: #eef2f7; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #3498db;">
-          <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📊 MoSPI FRAC Competency Radar Evaluation</h4>
-          <p style="margin: 4px 0;">📈 <strong>Statistical Competencies:</strong> ${cb.statistical}%</p>
-          <p style="margin: 4px 0;">💻 <strong>Technical Competencies:</strong> ${cb.technical}%</p>
-          <p style="margin: 4px 0;">🔒 <strong>Digital Governance:</strong> ${cb.digital_governance}%</p>
-          <p style="margin: 4px 0;">👔 <strong>Behavioral & Managerial:</strong> ${cb.behavioral}%</p>
+        <div style="background: #ffffff; padding: 16px; border-radius: 10px; margin: 15px 0; border: 1px solid #e2e8f0;">
+          <h4 style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 15px;">📊 MoSPI FRAC Competency Radar Evaluation</h4>
+          
+          <div class="competency-bar-wrapper">
+            <div class="competency-label"><span>📈 Statistical Competencies</span><span>${cb.statistical}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width: ${cb.statistical}%;"></div></div>
+          </div>
+
+          <div class="competency-bar-wrapper">
+            <div class="competency-label"><span>💻 Technical Competencies</span><span>${cb.technical}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width: ${cb.technical}%; background: #3b82f6;"></div></div>
+          </div>
+
+          <div class="competency-bar-wrapper">
+            <div class="competency-label"><span>🔒 Digital Governance</span><span>${cb.digital_governance}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width: ${cb.digital_governance}%; background: #8b5cf6;"></div></div>
+          </div>
+
+          <div class="competency-bar-wrapper">
+            <div class="competency-label"><span>👔 Behavioral & Managerial</span><span>${cb.behavioral}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width: ${cb.behavioral}%; background: #f59e0b;"></div></div>
+          </div>
         </div>
 
-        <p><strong>Key Skills Identified:</strong> ${skillsHTML}</p>
-        <p><strong>Matched Reference Module:</strong> <code>${a.recommended_pdf}</code></p>
-        <p><em>${a.reasoning}</em></p>
+        <p style="margin-bottom: 6px;"><strong>Key Skills Identified:</strong> ${skillsHTML}</p>
+        <p style="margin-bottom: 6px;"><strong>Matched Reference Module:</strong> <code>${a.recommended_pdf}</code></p>
+        <p style="color: #64748b; font-size: 13px; margin-top: 8px;"><em>${a.reasoning}</em></p>
       `;
 
       document.getElementById('step-2-card').style.display = 'block';
+      updateStepper(2);
     } else {
       throw new Error(data.message || 'Failed to analyze resume.');
     }
@@ -131,6 +163,7 @@ document.getElementById('generate-quiz-btn').addEventListener('click', async () 
       currentQuizData = randomizeQuizData(data.quiz);
       renderQuiz(currentQuizData);
       scoreBtn.style.display = 'block';
+      updateStepper(3);
       startTimer();
     } else {
       throw new Error(data.message || 'Failed to generate quiz.');
@@ -239,7 +272,7 @@ async function calculateScore() {
 
   const percentage = Math.round((score / currentQuizData.length) * 100);
   const scoreBanner = document.getElementById('score-banner');
-  scoreBanner.textContent = `Your Score: ${score} / ${currentQuizData.length} (${percentage}%)`;
+  scoreBanner.textContent = `Your Assessment Score: ${score} / ${currentQuizData.length} (${percentage}%)`;
   scoreBanner.style.display = 'block';
 
   if (percentage >= 70) {
@@ -250,11 +283,15 @@ async function calculateScore() {
   }
 
   document.getElementById('score-btn').style.display = 'none';
+  updateStepper(4);
 
   await fetchIGOTRecommendations(percentage, incorrectQuestionsList);
 }
 
 async function fetchIGOTRecommendations(scorePercentage, incorrectList) {
+  const loadingBox = document.getElementById('igot-loading');
+  if (loadingBox) loadingBox.style.display = 'block';
+
   try {
     const response = await fetch(`${API_BASE}/api/recommend-igot-courses`, {
       method: 'POST',
@@ -276,6 +313,8 @@ async function fetchIGOTRecommendations(scorePercentage, incorrectList) {
     }
   } catch (err) {
     console.error("Failed to fetch iGOT recommendations:", err);
+  } finally {
+    if (loadingBox) loadingBox.style.display = 'none';
   }
 }
 
@@ -283,22 +322,22 @@ function renderIGOTCards(courses) {
   const quizContainer = document.getElementById('quiz-container');
 
   let cardsHTML = `
-    <div class="card" style="margin-top: 30px; border-left: 5px solid #27ae60; background: #ffffff; padding: 20px; border-radius: 8px;">
-      <h3 style="color: #2c3e50; margin-top: 0;">🏛️ Recommended iGOT Karmayogi Learning Pathways</h3>
-      <p style="color: #555; font-size: 14px;">Based on your missed competency concepts, Groq AI generated these targeted government modules:</p>
-      <div style="display: grid; gap: 15px; margin-top: 15px;">
+    <div class="card" style="margin-top: 30px; border-left: 5px solid #10b981; background: #ffffff; padding: 24px;">
+      <h3 style="color: #1e3a8a; margin-top: 0;">🏛️ Recommended iGOT Karmayogi Learning Pathways</h3>
+      <p style="color: #64748b; font-size: 14px; margin-bottom: 18px;">Based on your missed competency concepts, Groq AI generated these targeted government modules:</p>
+      <div style="display: grid; gap: 16px;">
   `;
 
   courses.forEach((c) => {
     cardsHTML += `
-      <div style="background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h4 style="margin: 0; color: #1a252c;">${c.title}</h4>
-          <span class="badge" style="background: #e74c3c;">${c.competency_type}</span>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h4 style="margin: 0; color: #0f172a; font-size: 16px;">${c.title}</h4>
+          <span class="badge" style="background: #fee2e2; color: #991b1b;">${c.competency_type}</span>
         </div>
-        <p style="margin: 8px 0; font-size: 13px; color: #2c3e50;"><strong>Target Skill Gap:</strong> ${c.target_skill_gap}</p>
-        <p style="margin: 0 0 10px 0; font-size: 13px; color: #666;">${c.description}</p>
-        <a href="${c.portal_url}" target="_blank" style="color: #27ae60; font-weight: bold; text-decoration: none; font-size: 14px;">
+        <p style="margin: 6px 0; font-size: 13px; color: #1e3a8a;"><strong>Target Skill Gap:</strong> ${c.target_skill_gap}</p>
+        <p style="margin: 0 0 12px 0; font-size: 13px; color: #64748b;">${c.description}</p>
+        <a href="${c.portal_url}" target="_blank" style="color: #10b981; font-weight: 700; text-decoration: none; font-size: 14px;">
           🔗 Enroll on iGOT Karmayogi Portal →
         </a>
       </div>
@@ -321,57 +360,57 @@ function generateCertificate() {
   doc.rect(0, 0, 800, 600, "F");
 
   doc.setLineWidth(5);
-  doc.setDrawColor(44, 62, 80);
+  doc.setDrawColor(30, 58, 138);
   doc.rect(20, 20, 760, 560);
 
   doc.setLineWidth(2);
-  doc.setDrawColor(52, 152, 219);
+  doc.setDrawColor(59, 130, 246);
   doc.rect(28, 28, 744, 544);
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(28);
-  doc.setTextColor(44, 62, 80);
+  doc.setFontSize(26);
+  doc.setTextColor(30, 58, 138);
   doc.text("CERTIFICATE OF COMPETENCY ACHIEVEMENT", 400, 95, { align: "center" });
 
   doc.setFontSize(11);
   doc.setFont("courier", "bold");
-  doc.setTextColor(142, 68, 173);
+  doc.setTextColor(107, 33, 168);
   doc.text(`OFFICIAL ID: ${currentUserId}`, 400, 120, { align: "center" });
 
   doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(127, 140, 141);
+  doc.setTextColor(100, 116, 139);
   doc.text("THIS IS PROUDLY PRESENTED TO", 400, 160, { align: "center" });
 
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(41, 128, 185);
+  doc.setTextColor(15, 23, 42);
   doc.text(candidateName, 400, 200, { align: "center" });
 
   doc.setFontSize(13);
   doc.setFont("helvetica", "italic");
-  doc.setTextColor(52, 73, 94);
+  doc.setTextColor(30, 58, 138);
   doc.text(`Cadre: ${selectedRole}`, 400, 225, { align: "center" });
 
   doc.setLineWidth(1);
-  doc.setDrawColor(189, 195, 199);
+  doc.setDrawColor(226, 232, 240);
   doc.line(250, 240, 550, 240);
 
   doc.setFontSize(13);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(52, 73, 94);
+  doc.setTextColor(30, 58, 138);
   doc.text("For successfully passing the iGOT Karmayogi assessment in:", 400, 280, { align: "center" });
 
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(39, 174, 96);
+  doc.setTextColor(16, 185, 129);
   doc.text(passedDomain, 400, 315, { align: "center" });
 
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(127, 140, 141);
+  doc.setTextColor(100, 116, 139);
   doc.text(`Date Issued: ${today}`, 100, 490);
   doc.text("Verified by: MoSPI Skill Intelligence Engine", 700, 490, { align: "right" });
 

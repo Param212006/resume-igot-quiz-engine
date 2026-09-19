@@ -3,165 +3,374 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MoSPI Skill Intelligence & iGOT Quiz Engine</title>
+  <title>MoSPI Skill Intelligence Platform | iGOT Karmayogi</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-light: #3b82f6;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      --card-bg: #ffffff;
+      --text-dark: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+    }
+
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; transition: all 0.2s ease-in-out; }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 850px;
+      background: var(--bg-gradient);
+      color: var(--text-dark);
+      margin: 0;
+      padding: 30px 15px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
       margin: 0 auto;
-      padding: 20px;
-      background-color: #f4f7f6;
-      color: #333;
     }
-    h1 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
-    .subtitle { text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }
+
+    /* Header & Navbar Styling */
+    .gov-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .gov-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(30, 58, 138, 0.1);
+      color: var(--primary);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 25px;
+    }
+
+    /* Stepper Navigation */
+    .stepper {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      position: relative;
+    }
+
+    .stepper::before {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border);
+      z-index: 1;
+    }
+
+    .step-node {
+      position: relative;
+      z-index: 2;
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .step-node.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+    }
+
+    /* Card Containers */
     .card {
-      background: #fff;
-      padding: 22px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
+      animation: fadeIn 0.4s ease-out;
     }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 0;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Form Controls */
+    label { font-weight: 600; font-size: 14px; color: var(--text-dark); margin-bottom: 6px; display: block; }
+
+    select, input[type="file"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      font-size: 14px;
+      color: var(--text-dark);
+      margin-bottom: 18px;
+    }
+
+    select:focus, input[type="file"]:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Buttons */
     button.action-btn {
       width: 100%;
-      background: #3498db;
+      background: var(--primary);
       color: white;
       border: none;
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 5px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
       cursor: pointer;
-      font-weight: bold;
-      margin-top: 10px;
+      box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
     }
-    button.action-btn:disabled { background: #bdc3c7; }
+
+    button.action-btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    button.action-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Badges */
     .badge {
       display: inline-block;
-      background: #3498db;
-      color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 4px 10px;
+      border-radius: 6px;
       font-size: 12px;
-      margin-right: 5px;
+      font-weight: 600;
+      margin-right: 6px;
+      margin-bottom: 6px;
     }
+
     .user-id-badge {
-      background: #8e44ad;
-      color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
+      background: #f3e8ff;
+      color: #6b21a8;
+      padding: 4px 10px;
+      border-radius: 6px;
       font-size: 13px;
       font-family: monospace;
-      font-weight: bold;
+      font-weight: 700;
     }
+
+    /* Competency Radar Progress Bar Styling */
+    .competency-bar-wrapper { margin-bottom: 12px; }
+    .competency-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .progress-track { background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--primary-light); border-radius: 4px; }
+
+    /* Sticky Timer & Score Banner */
     #timer-banner {
       display: none;
       position: sticky;
-      top: 10px;
+      top: 15px;
       z-index: 100;
-      background: #2c3e50;
-      color: #ecf0f1;
+      background: #0f172a;
+      color: #f8fafc;
       text-align: center;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 18px;
-      font-weight: bold;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
       margin-bottom: 20px;
     }
+
     #score-banner {
       display: none;
-      background: #27ae60;
+      background: var(--accent);
       color: white;
       text-align: center;
-      padding: 15px;
-      border-radius: 8px;
+      padding: 18px;
+      border-radius: 12px;
       font-size: 20px;
-      font-weight: bold;
+      font-weight: 800;
       margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
     }
+
     #error-box {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 10px;
-      border-radius: 5px;
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      padding: 14px;
+      border-radius: 10px;
       margin-top: 15px;
       display: none;
+      font-size: 14px;
     }
+
+    /* Quiz Cards */
     .question-card {
       background: white;
-      padding: 15px;
-      margin-bottom: 15px;
-      border-radius: 6px;
-      border-left: 4px solid #3498db;
+      padding: 20px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--primary-light);
     }
+
+    .question-card h3 { font-size: 15px; color: var(--text-dark); margin-bottom: 12px; }
+
     .option-label {
       display: block;
       margin-bottom: 8px;
-      padding: 8px;
-      border-radius: 4px;
+      padding: 10px 14px;
+      border-radius: 8px;
       cursor: pointer;
-    }
-    .option-label.correct { background: #d4edda; color: #155724; font-weight: bold; }
-    .option-label.incorrect { background: #f8d7da; color: #721c24; }
-    .explanation {
-      display: none;
-      margin-top: 10px;
-      padding: 10px;
-      background: #eef9f1;
-      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
       font-size: 14px;
     }
+
+    .option-label:hover { background: #f1f5f9; }
+    .option-label.correct { background: #dcfce7; border-color: #86efac; color: #166534; font-weight: 600; }
+    .option-label.incorrect { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+    .explanation {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      background: #f0fdf4;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+
+    /* Loading Spinner */
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <h1>🏛️ MoSPI Skill Intelligence Platform</h1>
-  <div class="subtitle">AI-Enabled Competency Assessment & iGOT Karmayogi Learning Router (SIH26101)</div>
+  <div class="container">
+    
+    <!-- Gov Header -->
+    <div class="gov-header">
+      <div class="gov-badge">🇮🇳 Ministry of Statistics & Program Implementation</div>
+      <h1>Official Skill Intelligence Platform</h1>
+      <div class="subtitle">AI-Powered FRAC Competency Mapping & iGOT Karmayogi Learning Router (SIH26101)</div>
+    </div>
 
-  <!-- Step 1 Card -->
-  <div class="card" id="step-1-card">
-    <h3>Step 1: Select Official Cadre & Upload Resume</h3>
-    <form id="resume-form">
-      <div style="margin-bottom: 15px;">
-        <label for="official-role" style="font-weight: bold; display: block; margin-bottom: 5px;">Official Cadre / Designation:</label>
-        <select id="official-role" required style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px;">
-          <option value="Junior Statistical Officer (JSO)">Junior Statistical Officer (JSO)</option>
-          <option value="Senior Statistical Officer (SSO)">Senior Statistical Officer (SSO)</option>
-          <option value="Assistant Director / Data Analyst">Assistant Director / Data Analyst</option>
-          <option value="Director / Deputy Director (MoSPI)">Director / Deputy Director (MoSPI)</option>
-        </select>
-      </div>
+    <!-- Stepper Navigation -->
+    <div class="stepper">
+      <div class="step-node active" id="node-1">1</div>
+      <div class="step-node" id="node-2">2</div>
+      <div class="step-node" id="node-3">3</div>
+      <div class="step-node" id="node-4">4</div>
+    </div>
 
-      <div style="margin-bottom: 15px;">
-        <label for="resume-file" style="font-weight: bold; display: block; margin-bottom: 5px;">Upload Official Resume (PDF):</label>
-        <input type="file" id="resume-file" accept=".pdf" required style="width: 100%;" />
-      </div>
+    <!-- Step 1 Card -->
+    <div class="card" id="step-1-card">
+      <h3>📋 Step 1: Select Official Cadre & Upload Resume</h3>
+      <form id="resume-form">
+        <div>
+          <label for="official-role">Official Designation / Cadre:</label>
+          <select id="official-role" required>
+            <option value="Junior Statistical Officer (JSO)">Junior Statistical Officer (JSO)</option>
+            <option value="Senior Statistical Officer (SSO)">Senior Statistical Officer (SSO)</option>
+            <option value="Assistant Director / Data Analyst">Assistant Director / Data Analyst</option>
+            <option value="Director / Deputy Director (MoSPI)">Director / Deputy Director (MoSPI)</option>
+          </select>
+        </div>
 
-      <button type="submit" id="analyze-btn" class="action-btn">Analyze Competencies & Match iGOT Module</button>
-    </form>
+        <div>
+          <label for="resume-file">Upload Official Resume (PDF):</label>
+          <input type="file" id="resume-file" accept=".pdf" required />
+        </div>
+
+        <button type="submit" id="analyze-btn" class="action-btn">Analyze Competencies & Match iGOT Module</button>
+      </form>
+    </div>
+
+    <!-- Step 2 Card -->
+    <div class="card" id="step-2-card" style="display:none;">
+      <h3>📊 Step 2: MoSPI FRAC Competency Evaluation</h3>
+      <div id="analysis-results"></div>
+      <button id="generate-quiz-btn" class="action-btn" style="margin-top: 15px;">Generate 20-Question Domain Assessment</button>
+    </div>
+
+    <div id="error-box"></div>
+    <div id="timer-banner">⏱️ Time Remaining: <span id="timer-clock">15:00</span></div>
+    <div id="score-banner"></div>
+    
+    <button id="cert-btn" class="action-btn" style="display:none; background-color: var(--accent); margin-bottom: 20px;" onclick="generateCertificate()">
+      🎓 Download Official iGOT Completion Certificate (PDF)
+    </button>
+
+    <div id="quiz-container"></div>
+    <button id="score-btn" class="action-btn" style="display:none;" onclick="calculateScore()">Submit Quiz & Recommend iGOT Pathways</button>
+
+    <!-- iGOT Course Generation Loader -->
+    <div id="igot-loading" style="display: none; text-align: center; margin: 30px 0; padding: 24px; background: #fff; border-radius: 12px; box-shadow: var(--shadow);">
+      <div style="border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 14px auto;"></div>
+      <h4 style="color: var(--text-dark); margin: 0 0 6px 0; font-weight: 700;">🤖 Analyzing Missed Concepts...</h4>
+      <p style="color: var(--text-muted); font-size: 13px; margin: 0;">Groq AI is mapping your competency gaps to official iGOT Karmayogi learning pathways.</p>
+    </div>
+
   </div>
-
-  <!-- Step 2 Card -->
-  <div class="card" id="step-2-card" style="display:none;">
-    <h3>Step 2: MoSPI FRAC Competency Assessment</h3>
-    <div id="analysis-results"></div>
-    <br>
-    <button id="generate-quiz-btn" class="action-btn">Generate 20-Question Domain Assessment</button>
-  </div>
-
-  <div id="error-box"></div>
-  <div id="timer-banner">⏱️ Time Remaining: <span id="timer-clock">15:00</span></div>
-  <div id="score-banner"></div>
-  
-  <button id="cert-btn" class="action-btn" style="display:none; background-color: #27ae60; margin-bottom: 20px;" onclick="generateCertificate()">
-    🎓 Download Official iGOT Completion Certificate (PDF)
-  </button>
-
-  <div id="quiz-container"></div>
-  <button id="score-btn" class="action-btn" style="display:none;" onclick="calculateScore()">Submit Quiz & Recommend iGOT Pathways</button>
 
   <script src="script.js"></script>
 </body>
