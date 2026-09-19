@@ -2,9 +2,14 @@ import os
 import json
 import io
 import re
+import sqlite3
+import secrets
+from datetime import datetime
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from pypdf import PdfReader
 import pdfplumber
@@ -25,8 +30,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+security = HTTPBasic()
+
+# Admin Credentials (Set these in Render Environment Variables for production)
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "karmayogi123")
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+# SQLite Setup
+DB_FILE = "assessments.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_name TEXT,
+            detected_domain TEXT,
+            score_percentage REAL,
+            recommended_courses TEXT,
+            timestamp TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def authenticate_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
+    correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Admin Credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 class IncorrectQuestion(BaseModel):
     question: str
@@ -219,8 +262,155 @@ Format:
         raw_output = call_groq_llm(prompt)
         match = re.search(r'\[.*\]', raw_output, re.DOTALL)
         if match:
-            return {"status": "success", "courses": safe_parse_json(match.group(0))}
+            recommended_courses = safe_parse_json(match.group(0))
+
+            # Store result in SQLite database
+            try:
+                conn = sqlite3.connect(DB_FILE)
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO submissions (candidate_name, detected_domain, score_percentage, recommended_courses, timestamp) VALUES (?, ?, ?, ?, ?)",
+                    (
+                        payload.candidate_name,
+                        payload.detected_domain,
+                        payload.score_percentage,
+                        json.dumps(recommended_courses),
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    )
+                )
+                conn.commit()
+                conn.close()
+            except Exception as db_err:
+                print("DB Insertion Error:", db_err)
+
+            return {"status": "success", "courses": recommended_courses}
         return {"status": "error", "message": "Failed to parse recommendations."}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+# --- ADMIN DASHBOARD ENDPOINTS ---
+
+@app.get("/api/admin/submissions")
+def get_admin_submissions(username: str = Depends(authenticate_admin)):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, candidate_name, detected_domain, score_percentage, recommended_courses, timestamp FROM submissions ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    results = []
+    for row in rows:
+        results.append({
+            "id": row[0],
+            "candidate_name": row[1],
+            "detected_domain": row[2],
+            "score_percentage": row[3],
+            "recommended_courses": json.loads(row[4]) if row[4] else [],
+            "timestamp": row[5]
+        })
+
+    return {"status": "success", "total_submissions": len(results), "data": results}
+
+@app.get("/admin", response_class=HTMLResponse)
+def get_admin_dashboard(username: str = Depends(authenticate_admin)):
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>iGOT Assessment Admin Dashboard</title>
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background: #f8f9fa; color: #2c3e50; }
+        h1 { color: #1a252c; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #3498db; }
+        .card h3 { margin: 0 0 10px 0; color: #7f8c8d; font-size: 14px; }
+        .card p { margin: 0; font-size: 28px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #2c3e50; color: white; }
+        tr:hover { background: #f1f5f9; }
+        .badge { background: #e74c3c; color: white; padding: 3px 6px; border-radius: 4px; font-size: 11px; }
+      </style>
+    </head>
+    <body>
+      <h1>🏛️ iGOT Assessment Admin Dashboard</h1>
+      <p>Real-time analytics and candidate assessment logs.</p>
+      
+      <div class="stats-grid">
+        <div class="card">
+          <h3>TOTAL SUBMISSIONS</h3>
+          <p id="stat-total">0</p>
+        </div>
+        <div class="card" style="border-left-color: #27ae60;">
+          <h3>AVERAGE SCORE</h3>
+          <p id="stat-avg">0%</p>
+        </div>
+        <div class="card" style="border-left-color: #f39c12;">
+          <h3>PASS RATE (&ge;70%)</h3>
+          <p id="stat-pass">0%</p>
+        </div>
+      </div>
+
+      <h2>Candidate Submissions</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Candidate Name</th>
+            <th>Domain</th>
+            <th>Score</th>
+            <th>Timestamp</th>
+            <th>Recommended iGOT Courses</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="6">Loading candidate logs...</td></tr>
+        </tbody>
+      </table>
+
+      <script>
+        async function loadAdminData() {
+          try {
+            const res = await fetch('/api/admin/submissions');
+            const result = await res.json();
+            if(result.status === 'success') {
+              const data = result.data;
+              document.getElementById('stat-total').textContent = data.length;
+              
+              if(data.length > 0) {
+                const totalScore = data.reduce((acc, curr) => acc + curr.score_percentage, 0);
+                const avgScore = Math.round(totalScore / data.length);
+                document.getElementById('stat-avg').textContent = `${avgScore}%`;
+
+                const passed = data.filter(d => d.score_percentage >= 70).length;
+                const passRate = Math.round((passed / data.length) * 100);
+                document.getElementById('stat-pass').textContent = `${passRate}%`;
+              }
+
+              const tbody = document.getElementById('table-body');
+              tbody.innerHTML = '';
+              
+              data.forEach(item => {
+                const coursesHTML = item.recommended_courses.map(c => `• ${c.title} <span class="badge">${c.competency_type}</span>`).join('<br>');
+                tbody.innerHTML += `
+                  <tr>
+                    <td>#${item.id}</td>
+                    <td><strong>${item.candidate_name}</strong></td>
+                    <td>${item.detected_domain}</td>
+                    <td><strong>${item.score_percentage}%</strong></td>
+                    <td>${item.timestamp}</td>
+                    <td style="font-size: 13px;">${coursesHTML || 'None'}</td>
+                  </tr>
+                `;
+              });
+            }
+          } catch(err) {
+            console.error(err);
+          }
+        }
+        loadAdminData();
+      </script>
+    </body>
+    </html>
+    """
