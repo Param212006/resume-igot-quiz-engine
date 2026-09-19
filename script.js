@@ -5,7 +5,8 @@ let matchedPdfFilename = "sample_ai.pdf";
 
 let currentUserId = "KARM-UNKNOWN";
 let candidateName = "Candidate";
-let passedDomain = "AI & Machine Learning";
+let selectedRole = "Junior Statistical Officer (JSO)";
+let passedDomain = "Official Statistical System Assessment";
 
 // Live Render backend URL
 const API_BASE = "https://resume-igot-quiz-engine-1.onrender.com";
@@ -30,6 +31,7 @@ function randomizeQuizData(quizArray) {
 document.getElementById('resume-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const fileInput = document.getElementById('resume-file');
+  const roleInput = document.getElementById('official-role').value;
   const analyzeBtn = document.getElementById('analyze-btn');
   const errorBox = document.getElementById('error-box');
 
@@ -37,10 +39,11 @@ document.getElementById('resume-form').addEventListener('submit', async (e) => {
 
   errorBox.style.display = 'none';
   analyzeBtn.disabled = true;
-  analyzeBtn.textContent = 'Analyzing Resume...';
+  analyzeBtn.textContent = 'Evaluating Competencies against MoSPI FRAC Framework...';
 
   const formData = new FormData();
   formData.append('file', fileInput.files[0]);
+  formData.append('official_role', roleInput);
 
   try {
     const response = await fetch(`${API_BASE}/api/analyze-resume`, {
@@ -53,18 +56,29 @@ document.getElementById('resume-form').addEventListener('submit', async (e) => {
     if (data.status === 'success' && data.analysis) {
       const a = data.analysis;
       matchedPdfFilename = a.recommended_pdf;
-      passedDomain = a.detected_domain || "Technical Assessment";
+      passedDomain = a.detected_domain || "Official Statistics Assessment";
       candidateName = a.candidate_name || "Candidate";
+      selectedRole = a.official_role || roleInput;
       currentUserId = a.user_id || `KARM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
+      const cb = a.competency_breakdown || { statistical: 65, technical: 80, digital_governance: 55, behavioral: 70 };
       const skillsHTML = (a.key_skills || []).map(s => `<span class="badge">${s}</span>`).join(' ');
 
       document.getElementById('analysis-results').innerHTML = `
-        <p><strong>Candidate User ID:</strong> <span class="badge" style="background:#8e44ad;">${currentUserId}</span></p>
-        <p><strong>Candidate Name:</strong> ${candidateName}</p>
-        <p><strong>Detected Domain:</strong> ${a.detected_domain}</p>
-        <p><strong>Key Skills:</strong> ${skillsHTML}</p>
-        <p><strong>Matched Section File:</strong> <code>${a.recommended_pdf}</code></p>
+        <p><strong>Candidate ID:</strong> <span class="user-id-badge">${currentUserId}</span></p>
+        <p><strong>Official Name:</strong> ${candidateName}</p>
+        <p><strong>Target Cadre:</strong> ${selectedRole}</p>
+        
+        <div style="background: #eef2f7; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #3498db;">
+          <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📊 MoSPI FRAC Competency Radar Evaluation</h4>
+          <p style="margin: 4px 0;">📈 <strong>Statistical Competencies:</strong> ${cb.statistical}%</p>
+          <p style="margin: 4px 0;">💻 <strong>Technical Competencies:</strong> ${cb.technical}%</p>
+          <p style="margin: 4px 0;">🔒 <strong>Digital Governance:</strong> ${cb.digital_governance}%</p>
+          <p style="margin: 4px 0;">👔 <strong>Behavioral & Managerial:</strong> ${cb.behavioral}%</p>
+        </div>
+
+        <p><strong>Key Skills Identified:</strong> ${skillsHTML}</p>
+        <p><strong>Matched Reference Module:</strong> <code>${a.recommended_pdf}</code></p>
         <p><em>${a.reasoning}</em></p>
       `;
 
@@ -77,7 +91,7 @@ document.getElementById('resume-form').addEventListener('submit', async (e) => {
     errorBox.style.display = 'block';
   } finally {
     analyzeBtn.disabled = false;
-    analyzeBtn.textContent = 'Analyze Resume & Pick Section';
+    analyzeBtn.textContent = 'Analyze Competencies & Match iGOT Module';
   }
 });
 
@@ -95,7 +109,7 @@ document.getElementById('generate-quiz-btn').addEventListener('click', async () 
   scoreBtn.style.display = 'none';
   quizContainer.innerHTML = '';
   genBtn.disabled = true;
-  genBtn.textContent = 'Generating Assessment Quiz...';
+  genBtn.textContent = 'Generating 20-Question Domain Assessment...';
 
   try {
     const pdfResponse = await fetch(matchedPdfFilename);
@@ -126,7 +140,7 @@ document.getElementById('generate-quiz-btn').addEventListener('click', async () 
     errorBox.style.display = 'block';
   } finally {
     genBtn.disabled = false;
-    genBtn.textContent = 'Generate 20-Question Assessment';
+    genBtn.textContent = 'Generate 20-Question Domain Assessment';
   }
 });
 
@@ -147,7 +161,7 @@ function startTimer() {
 
     if (timeRemaining <= 0) {
       clearInterval(timerInterval);
-      alert('Time is up! Submitting quiz automatically.');
+      alert('Time is up! Submitting assessment automatically.');
       calculateScore();
     }
   }, 1000);
@@ -248,6 +262,7 @@ async function fetchIGOTRecommendations(scorePercentage, incorrectList) {
       body: JSON.stringify({
         user_id: currentUserId,
         candidate_name: candidateName,
+        official_role: selectedRole,
         detected_domain: passedDomain,
         score_percentage: scorePercentage,
         incorrect_questions: incorrectList
@@ -269,8 +284,8 @@ function renderIGOTCards(courses) {
 
   let cardsHTML = `
     <div class="card" style="margin-top: 30px; border-left: 5px solid #27ae60; background: #ffffff; padding: 20px; border-radius: 8px;">
-      <h3 style="color: #2c3e50; margin-top: 0;">🏛️ Recommended iGOT Karmayogi Courses</h3>
-      <p style="color: #555; font-size: 14px;">Based on your missed questions, Groq AI generated these targeted learning modules:</p>
+      <h3 style="color: #2c3e50; margin-top: 0;">🏛️ Recommended iGOT Karmayogi Learning Pathways</h3>
+      <p style="color: #555; font-size: 14px;">Based on your missed competency concepts, Groq AI generated these targeted government modules:</p>
       <div style="display: grid; gap: 15px; margin-top: 15px;">
   `;
 
@@ -281,10 +296,10 @@ function renderIGOTCards(courses) {
           <h4 style="margin: 0; color: #1a252c;">${c.title}</h4>
           <span class="badge" style="background: #e74c3c;">${c.competency_type}</span>
         </div>
-        <p style="margin: 8px 0; font-size: 13px; color: #2c3e50;"><strong>Skill Gap:</strong> ${c.target_skill_gap}</p>
+        <p style="margin: 8px 0; font-size: 13px; color: #2c3e50;"><strong>Target Skill Gap:</strong> ${c.target_skill_gap}</p>
         <p style="margin: 0 0 10px 0; font-size: 13px; color: #666;">${c.description}</p>
         <a href="${c.portal_url}" target="_blank" style="color: #27ae60; font-weight: bold; text-decoration: none; font-size: 14px;">
-          🔗 Enroll on iGOT Karmayogi Platform →
+          🔗 Enroll on iGOT Karmayogi Portal →
         </a>
       </div>
     `;
@@ -314,38 +329,43 @@ function generateCertificate() {
   doc.rect(28, 28, 744, 544);
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(30);
+  doc.setFontSize(28);
   doc.setTextColor(44, 62, 80);
-  doc.text("CERTIFICATE OF ACHIEVEMENT", 400, 100, { align: "center" });
+  doc.text("CERTIFICATE OF COMPETENCY ACHIEVEMENT", 400, 95, { align: "center" });
 
   doc.setFontSize(11);
   doc.setFont("courier", "bold");
   doc.setTextColor(142, 68, 173);
-  doc.text(`CANDIDATE ID: ${currentUserId}`, 400, 130, { align: "center" });
+  doc.text(`OFFICIAL ID: ${currentUserId}`, 400, 120, { align: "center" });
 
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(127, 140, 141);
-  doc.text("THIS IS PROUDLY PRESENTED TO", 400, 170, { align: "center" });
+  doc.text("THIS IS PROUDLY PRESENTED TO", 400, 160, { align: "center" });
 
-  doc.setFontSize(26);
+  doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(41, 128, 185);
-  doc.text(candidateName, 400, 230, { align: "center" });
+  doc.text(candidateName, 400, 200, { align: "center" });
+
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(52, 73, 94);
+  doc.text(`Cadre: ${selectedRole}`, 400, 225, { align: "center" });
 
   doc.setLineWidth(1);
   doc.setDrawColor(189, 195, 199);
-  doc.line(250, 250, 550, 250);
+  doc.line(250, 240, 550, 240);
 
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(52, 73, 94);
-  doc.text("For successfully completing the AI technical assessment in:", 400, 300, { align: "center" });
+  doc.text("For successfully passing the iGOT Karmayogi assessment in:", 400, 280, { align: "center" });
 
-  doc.setFontSize(22);
+  doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(39, 174, 96);
-  doc.text(passedDomain, 400, 340, { align: "center" });
+  doc.text(passedDomain, 400, 315, { align: "center" });
 
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -353,7 +373,7 @@ function generateCertificate() {
   doc.setFont("helvetica", "normal");
   doc.setTextColor(127, 140, 141);
   doc.text(`Date Issued: ${today}`, 100, 490);
-  doc.text("Verified by: Resume Quiz Engine AI", 700, 490, { align: "right" });
+  doc.text("Verified by: MoSPI Skill Intelligence Engine", 700, 490, { align: "right" });
 
   doc.save(`${currentUserId}_${candidateName.replace(/\s+/g, '_')}_Certificate.pdf`);
 }

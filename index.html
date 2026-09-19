@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resume-Driven Assessment & iGOT Engine</title>
+  <title>MoSPI Skill Intelligence & iGOT Quiz Engine</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -11,16 +11,17 @@
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 800px;
+      max-width: 850px;
       margin: 0 auto;
       padding: 20px;
       background-color: #f4f7f6;
       color: #333;
     }
-    h1 { text-align: center; color: #2c3e50; }
+    h1 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
+    .subtitle { text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }
     .card {
       background: #fff;
-      padding: 20px;
+      padding: 22px;
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       margin-bottom: 20px;
@@ -46,6 +47,15 @@
       border-radius: 4px;
       font-size: 12px;
       margin-right: 5px;
+    }
+    .user-id-badge {
+      background: #8e44ad;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: monospace;
+      font-weight: bold;
     }
     #timer-banner {
       display: none;
@@ -108,23 +118,38 @@
 </head>
 <body>
 
-  <h1>📄 Resume Assessment & iGOT Engine</h1>
+  <h1>🏛️ MoSPI Skill Intelligence Platform</h1>
+  <div class="subtitle">AI-Enabled Competency Assessment & iGOT Karmayogi Learning Router (SIH26101)</div>
 
-  <!-- Step 1 -->
+  <!-- Step 1 Card -->
   <div class="card" id="step-1-card">
-    <h3>Step 1: Upload Your Resume</h3>
+    <h3>Step 1: Select Official Cadre & Upload Resume</h3>
     <form id="resume-form">
-      <input type="file" id="resume-file" accept=".pdf" required />
-      <button type="submit" id="analyze-btn" class="action-btn">Analyze Resume & Pick Section</button>
+      <div style="margin-bottom: 15px;">
+        <label for="official-role" style="font-weight: bold; display: block; margin-bottom: 5px;">Official Cadre / Designation:</label>
+        <select id="official-role" required style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px;">
+          <option value="Junior Statistical Officer (JSO)">Junior Statistical Officer (JSO)</option>
+          <option value="Senior Statistical Officer (SSO)">Senior Statistical Officer (SSO)</option>
+          <option value="Assistant Director / Data Analyst">Assistant Director / Data Analyst</option>
+          <option value="Director / Deputy Director (MoSPI)">Director / Deputy Director (MoSPI)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 15px;">
+        <label for="resume-file" style="font-weight: bold; display: block; margin-bottom: 5px;">Upload Official Resume (PDF):</label>
+        <input type="file" id="resume-file" accept=".pdf" required style="width: 100%;" />
+      </div>
+
+      <button type="submit" id="analyze-btn" class="action-btn">Analyze Competencies & Match iGOT Module</button>
     </form>
   </div>
 
-  <!-- Step 2 -->
+  <!-- Step 2 Card -->
   <div class="card" id="step-2-card" style="display:none;">
-    <h3>Step 2: Resume Matched Assessment</h3>
+    <h3>Step 2: MoSPI FRAC Competency Assessment</h3>
     <div id="analysis-results"></div>
     <br>
-    <button id="generate-quiz-btn" class="action-btn">Generate 20-Question Assessment</button>
+    <button id="generate-quiz-btn" class="action-btn">Generate 20-Question Domain Assessment</button>
   </div>
 
   <div id="error-box"></div>
@@ -132,11 +157,11 @@
   <div id="score-banner"></div>
   
   <button id="cert-btn" class="action-btn" style="display:none; background-color: #27ae60; margin-bottom: 20px;" onclick="generateCertificate()">
-    🎓 Download Completion Certificate (PDF)
+    🎓 Download Official iGOT Completion Certificate (PDF)
   </button>
 
   <div id="quiz-container"></div>
-  <button id="score-btn" class="action-btn" style="display:none;" onclick="calculateScore()">Submit Quiz & Show Score</button>
+  <button id="score-btn" class="action-btn" style="display:none;" onclick="calculateScore()">Submit Quiz & Recommend iGOT Pathways</button>
 
   <script src="script.js"></script>
 </body>

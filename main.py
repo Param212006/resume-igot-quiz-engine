@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
@@ -21,9 +21,8 @@ try:
 except ImportError:
     dirtyjson = None
 
-app = FastAPI(title="Resume Quiz & iGOT Engine API")
+app = FastAPI(title="MoSPI Skill Intelligence API")
 
-# Enable CORS for frontend requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,7 +40,7 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "karmayogi123")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# SQLite Setup
+# SQLite Persistence Setup
 DB_FILE = "assessments.db"
 
 def init_db():
@@ -52,6 +51,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT,
             candidate_name TEXT,
+            official_role TEXT,
             detected_domain TEXT,
             score_percentage REAL,
             recommended_courses TEXT,
@@ -83,6 +83,7 @@ class IncorrectQuestion(BaseModel):
 class CourseRecommendationRequest(BaseModel):
     user_id: Optional[str] = None
     candidate_name: Optional[str] = "Candidate"
+    official_role: Optional[str] = "Junior Statistical Officer (JSO)"
     detected_domain: str
     score_percentage: float
     incorrect_questions: List[IncorrectQuestion]
@@ -159,10 +160,13 @@ def safe_parse_json(json_str):
 
 @app.get("/")
 def read_root():
-    return {"status": "online", "message": "Resume Quiz & iGOT Engine API is active!"}
+    return {"status": "online", "message": "MoSPI Skill Intelligence Engine API is active!"}
 
 @app.post("/api/analyze-resume")
-async def analyze_resume(file: UploadFile = File(...)):
+async def analyze_resume(
+    file: UploadFile = File(...),
+    official_role: str = Form("Junior Statistical Officer (JSO)")
+):
     try:
         pdf_bytes = await file.read()
         resume_text = extract_text_from_pdf_bytes(pdf_bytes)
@@ -170,7 +174,6 @@ async def analyze_resume(file: UploadFile = File(...)):
         if not resume_text:
             return {"status": "error", "message": "Could not extract text from uploaded PDF."}
 
-        # Generate unique candidate User ID
         unique_user_id = f"KARM-{uuid.uuid4().hex[:6].upper()}"
 
         available_files = [f for f in os.listdir('.') if f.endswith('.pdf')]
@@ -179,19 +182,34 @@ async def analyze_resume(file: UploadFile = File(...)):
 
         file_list_str = ", ".join([f'"{f}"' for f in available_files])
 
-        prompt = f"""Analyze this resume and perform two tasks:
-1. Extract the candidate's full legal name from the resume text. If not explicitly found, return "Candidate".
-2. Match the candidate's expertise to ONE of the available reference PDF files: [{file_list_str}].
+        prompt = f"""You are an HR Capacity Building Expert for India's Official Statistical System (MoSPI / iGOT Karmayogi).
 
-Return ONLY a valid JSON object.
+Target Cadre/Role: {official_role}
+
+Task:
+1. Extract the candidate's full legal name from the resume text (or "Candidate" if missing).
+2. Evaluate competency proficiency (0-100%) across 4 MoSPI Pillars:
+   - Statistical Competencies (Survey design, sampling, price/labour stats, NAS, SDG indicators)
+   - Technical Competencies (Python, R, SQL, SPSS, GIS, AI/ML)
+   - Digital Governance (Cybersecurity, data privacy, government cloud, DPI)
+   - Behavioral & Managerial (Leadership, public sector ethics, decision-making)
+3. Match primary skill gap to ONE available reference PDF file: [{file_list_str}].
+
+Return ONLY raw valid JSON object.
 
 Format:
 {{
   "candidate_name": "Full Name",
-  "detected_domain": "Domain Name Here",
-  "key_skills": ["Skill 1", "Skill 2"],
+  "detected_domain": "Official Statistical Analysis & Sampling",
+  "competency_breakdown": {{
+    "statistical": 65,
+    "technical": 80,
+    "digital_governance": 55,
+    "behavioral": 70
+  }},
+  "key_skills": ["Python", "NSSO Survey Design", "SQL"],
   "recommended_pdf": "{available_files[0]}",
-  "reasoning": "Candidate displays experience relevant to this module."
+  "reasoning": "Candidate exhibits strong technical capability but requires competency enhancement in NSSO Survey Sampling Methods."
 }}
 
 Resume Text:
@@ -202,6 +220,7 @@ Resume Text:
         if match:
             analysis = safe_parse_json(match.group(0))
             analysis["user_id"] = unique_user_id
+            analysis["official_role"] = official_role
             return {"status": "success", "analysis": analysis}
         return {"status": "error", "message": "Failed to parse analysis response."}
 
@@ -253,16 +272,17 @@ async def recommend_igot_courses(payload: CourseRecommendationRequest):
 
         prompt = f"""You are an HR Capacity Building Expert for India's iGOT Karmayogi platform.
 
-Candidate Context:
+Official Context:
 - User ID: {user_id}
-- Candidate Name: {payload.candidate_name}
+- Official Name: {payload.candidate_name}
+- Cadre/Role: {payload.official_role}
 - Domain: {payload.detected_domain}
 - Quiz Score: {payload.score_percentage}%
-- Missed Questions:
+- Missed Concepts:
 {missed_summary if missed_summary else "None! Perfect score."}
 
 Task:
-Analyze the missed concepts and suggest 3 relevant iGOT Karmayogi courses to bridge these skill gaps.
+Analyze missed concepts and suggest 3 relevant iGOT Karmayogi government courses across Statistical, Technical, Digital Governance, or Managerial competencies.
 
 Return ONLY raw valid JSON array.
 
@@ -270,8 +290,8 @@ Format:
 [
   {{
     "title": "Course Name",
-    "competency_type": "Functional / Behavioural / Domain",
-    "target_skill_gap": "What skill gap this course addresses",
+    "competency_type": "Statistical / Technical / Digital Governance / Behavioral",
+    "target_skill_gap": "What competency gap this course bridges",
     "description": "Short 1-sentence summary",
     "portal_url": "https://igotkarmayogi.gov.in/"
   }}
@@ -286,10 +306,11 @@ Format:
                 conn = sqlite3.connect(DB_FILE)
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO submissions (user_id, candidate_name, detected_domain, score_percentage, recommended_courses, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO submissions (user_id, candidate_name, official_role, detected_domain, score_percentage, recommended_courses, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
                         user_id,
                         payload.candidate_name,
+                        payload.official_role,
                         payload.detected_domain,
                         payload.score_percentage,
                         json.dumps(recommended_courses),
@@ -346,7 +367,7 @@ def delete_source_file(filename: str, username: str = Depends(authenticate_admin
 def get_admin_submissions(username: str = Depends(authenticate_admin)):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, user_id, candidate_name, detected_domain, score_percentage, recommended_courses, timestamp FROM submissions ORDER BY id DESC")
+    cursor.execute("SELECT id, user_id, candidate_name, official_role, detected_domain, score_percentage, recommended_courses, timestamp FROM submissions ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
 
@@ -356,10 +377,11 @@ def get_admin_submissions(username: str = Depends(authenticate_admin)):
             "id": row[0],
             "user_id": row[1] if row[1] else "N/A",
             "candidate_name": row[2],
-            "detected_domain": row[3],
-            "score_percentage": row[4],
-            "recommended_courses": json.loads(row[5]) if row[5] else [],
-            "timestamp": row[6]
+            "official_role": row[3] if row[3] else "JSO",
+            "detected_domain": row[4],
+            "score_percentage": row[5],
+            "recommended_courses": json.loads(row[6]) if row[6] else [],
+            "timestamp": row[7]
         })
 
     return {"status": "success", "total_submissions": len(results), "data": results}
@@ -370,7 +392,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
     <!DOCTYPE html>
     <html>
     <head>
-      <title>iGOT Assessment Admin Dashboard</title>
+      <title>iGOT Skill Intelligence Admin Dashboard</title>
       <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background: #f8f9fa; color: #2c3e50; }
         .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -396,10 +418,10 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
     <body>
       <div class="header-container">
         <div>
-          <h1>🏛️ iGOT Assessment Admin Dashboard</h1>
-          <p style="margin: 5px 0 0 0;">Real-time analytics, candidate logs & source file management.</p>
+          <h1>🏛️ MoSPI Skill Intelligence Admin Dashboard</h1>
+          <p style="margin: 5px 0 0 0;">Real-time official capacity logs, pass rates & assessment PDF management.</p>
         </div>
-        <button class="btn export-btn" onclick="exportTableToCSV('candidate_submissions.csv')">📥 Export CSV</button>
+        <button class="btn export-btn" onclick="exportTableToCSV('official_submissions.csv')">📥 Export CSV</button>
       </div>
       
       <div class="stats-grid">
@@ -419,7 +441,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
 
       <!-- Source File Management Section -->
       <div class="section-card">
-        <h2>📁 Assessment Source PDFs</h2>
+        <h2>📁 Reference Material PDFs</h2>
         <p style="font-size: 14px; color: #666;">Upload or delete reference PDFs used to generate domain quizzes.</p>
         
         <form id="upload-form" style="margin-bottom: 20px; display: flex; gap: 10px;">
@@ -443,12 +465,13 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
 
       <!-- Candidate Submissions Section -->
       <div class="section-card">
-        <h2>Candidate Submissions</h2>
+        <h2>Official Assessment Submissions</h2>
         <table id="submissions-table">
           <thead>
             <tr>
               <th>User ID</th>
-              <th>Candidate Name</th>
+              <th>Official Name</th>
+              <th>Role / Cadre</th>
               <th>Domain</th>
               <th>Score</th>
               <th>Timestamp</th>
@@ -456,7 +479,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
             </tr>
           </thead>
           <tbody id="table-body">
-            <tr><td colspan="6">Loading candidate logs...</td></tr>
+            <tr><td colspan="7">Loading official logs...</td></tr>
           </tbody>
         </table>
       </div>
@@ -540,6 +563,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
                   <tr>
                     <td><span class="user-id-badge">${item.user_id}</span></td>
                     <td><strong>${item.candidate_name}</strong></td>
+                    <td>${item.official_role}</td>
                     <td>${item.detected_domain}</td>
                     <td><strong>${item.score_percentage}%</strong></td>
                     <td>${item.timestamp}</td>
@@ -558,13 +582,14 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
           }
 
           let csv = [];
-          csv.push(["User ID", "Candidate Name", "Detected Domain", "Score Percentage", "Timestamp", "Recommended Courses"].join(","));
+          csv.push(["User ID", "Official Name", "Role Cadre", "Detected Domain", "Score Percentage", "Timestamp", "Recommended Courses"].join(","));
 
           rawSubmissionsData.forEach(item => {
             const courseList = item.recommended_courses.map(c => c.title).join("; ");
             const row = [
               `"${item.user_id}"`,
               `"${item.candidate_name.replace(/"/g, '""')}"`,
+              `"${item.official_role.replace(/"/g, '""')}"`,
               `"${item.detected_domain.replace(/"/g, '""')}"`,
               `"${item.score_percentage}%"`,
               `"${item.timestamp}"`,
