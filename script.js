@@ -8,7 +8,6 @@ let candidateName = "Candidate";
 let selectedRole = "Junior Statistical Officer (JSO)";
 let passedDomain = "Official Statistical System Assessment";
 
-// Live Render backend URL
 const API_BASE = "https://resume-igot-quiz-engine-1.onrender.com";
 
 function shuffleArray(array) {
@@ -285,7 +284,48 @@ async function calculateScore() {
   document.getElementById('score-btn').style.display = 'none';
   updateStepper(4);
 
+  awardBadgesAndXP(percentage);
   await fetchIGOTRecommendations(percentage, incorrectQuestionsList);
+}
+
+function awardBadgesAndXP(scorePercentage) {
+  const gamificationCard = document.getElementById('gamification-card');
+  const badgeContainer = document.getElementById('badge-container');
+  const reassessmentCard = document.getElementById('reassessment-card');
+  
+  gamificationCard.style.display = 'block';
+  reassessmentCard.style.display = 'block';
+
+  let earnedBadges = [];
+  let earnedXP = scorePercentage * 10;
+
+  if (scorePercentage >= 50) {
+    earnedBadges.push({ title: "📊 FRAC Baseline Cleared", color: "#3b82f6" });
+  }
+  if (scorePercentage >= 70) {
+    earnedBadges.push({ title: "🏅 Official iGOT Competent", color: "#10b981" });
+  }
+  if (scorePercentage === 100) {
+    earnedBadges.push({ title: "⭐ Statistical Mastery Elite", color: "#f59e0b" });
+  }
+
+  badgeContainer.innerHTML = `
+    <div style="background: #ede9fe; color: #5b21b6; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 13px;">⚡ Total XP: +${earnedXP}</div>
+  `;
+
+  earnedBadges.forEach(b => {
+    badgeContainer.innerHTML += `
+      <div style="background: ${b.color}; color: white; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;">${b.title}</div>
+    `;
+  });
+}
+
+function triggerReassessment() {
+  const reassessmentCard = document.getElementById('reassessment-card');
+  reassessmentCard.style.display = 'none';
+  document.getElementById('quiz-container').scrollIntoView({ behavior: 'smooth' });
+  const genBtn = document.getElementById('generate-quiz-btn');
+  genBtn.click();
 }
 
 async function fetchIGOTRecommendations(scorePercentage, incorrectList) {

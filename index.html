@@ -42,7 +42,6 @@
       margin: 0 auto;
     }
 
-    /* Header & Navbar Styling */
     .gov-header {
       text-align: center;
       margin-bottom: 30px;
@@ -76,7 +75,6 @@
       margin-bottom: 25px;
     }
 
-    /* Stepper Navigation */
     .stepper {
       display: flex;
       justify-content: space-between;
@@ -118,7 +116,6 @@
       box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
     }
 
-    /* Card Containers */
     .card {
       background: var(--card-bg);
       border-radius: 16px;
@@ -145,7 +142,6 @@
       gap: 8px;
     }
 
-    /* Form Controls */
     label { font-weight: 600; font-size: 14px; color: var(--text-dark); margin-bottom: 6px; display: block; }
 
     select, input[type="file"] {
@@ -165,7 +161,6 @@
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
 
-    /* Buttons */
     button.action-btn {
       width: 100%;
       background: var(--primary);
@@ -191,7 +186,6 @@
       transform: none;
     }
 
-    /* Badges */
     .badge {
       display: inline-block;
       background: #e0e7ff;
@@ -214,13 +208,11 @@
       font-weight: 700;
     }
 
-    /* Competency Radar Progress Bar Styling */
     .competency-bar-wrapper { margin-bottom: 12px; }
     .competency-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
     .progress-track { background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; }
     .progress-fill { height: 100%; background: var(--primary-light); border-radius: 4px; }
 
-    /* Sticky Timer & Score Banner */
     #timer-banner {
       display: none;
       position: sticky;
@@ -261,7 +253,6 @@
       font-size: 14px;
     }
 
-    /* Quiz Cards */
     .question-card {
       background: white;
       padding: 20px;
@@ -299,7 +290,6 @@
       border: 1px solid #bbf7d0;
     }
 
-    /* Loading Spinner */
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
@@ -307,14 +297,12 @@
 
   <div class="container">
     
-    <!-- Gov Header -->
     <div class="gov-header">
       <div class="gov-badge">🇮🇳 Ministry of Statistics & Program Implementation</div>
       <h1>Official Skill Intelligence Platform</h1>
       <div class="subtitle">AI-Powered FRAC Competency Mapping & iGOT Karmayogi Learning Router (SIH26101)</div>
     </div>
 
-    <!-- Stepper Navigation -->
     <div class="stepper">
       <div class="step-node active" id="node-1">1</div>
       <div class="step-node" id="node-2">2</div>
@@ -353,6 +341,21 @@
     </div>
 
     <div id="error-box"></div>
+    
+    <!-- Gamification & Badges Card -->
+    <div id="gamification-card" class="card" style="display: none; border-left: 5px solid #f59e0b; background: #fffbeb;">
+      <h3 style="color: #b45309; margin-top: 0;">🏆 Official MoSPI Achievement Badges & XP</h3>
+      <p style="font-size: 13px; color: #78350f; margin-bottom: 0;">Earned through verified competency assessments and skill gap closure.</p>
+      <div id="badge-container" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;"></div>
+    </div>
+
+    <!-- Re-Assessment Card -->
+    <div id="reassessment-card" class="card" style="display: none; border-left: 5px solid #8b5cf6; background: #fdf4ff;">
+      <h3 style="color: #6b21a8; margin-top: 0;">🔄 Competency Closure Re-Assessment</h3>
+      <p style="font-size: 13px; color: #581c87; margin-bottom: 12px;">Complete a quick validation check to verify that your iGOT Karmayogi learning pathway successfully closed your skill gap.</p>
+      <button id="start-reassessment-btn" class="action-btn" style="background: #8b5cf6;" onclick="triggerReassessment()">Start Validation Re-Assessment</button>
+    </div>
+
     <div id="timer-banner">⏱️ Time Remaining: <span id="timer-clock">15:00</span></div>
     <div id="score-banner"></div>
     
@@ -363,7 +366,6 @@
     <div id="quiz-container"></div>
     <button id="score-btn" class="action-btn" style="display:none;" onclick="calculateScore()">Submit Quiz & Recommend iGOT Pathways</button>
 
-    <!-- iGOT Course Generation Loader -->
     <div id="igot-loading" style="display: none; text-align: center; margin: 30px 0; padding: 24px; background: #fff; border-radius: 12px; box-shadow: var(--shadow);">
       <div style="border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 14px auto;"></div>
       <h4 style="color: var(--text-dark); margin: 0 0 6px 0; font-weight: 700;">🤖 Analyzing Missed Concepts...</h4>
