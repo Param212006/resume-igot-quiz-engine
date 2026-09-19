@@ -22,6 +22,7 @@ except ImportError:
 
 app = FastAPI(title="Resume Quiz & iGOT Engine API")
 
+# Enable CORS for frontend requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,7 +33,7 @@ app.add_middleware(
 
 security = HTTPBasic()
 
-# Admin Credentials (Set these in Render Environment Variables for production)
+# Admin Credentials (Set these in Render Environment Variables for custom credentials)
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "karmayogi123")
 
@@ -264,7 +265,7 @@ Format:
         if match:
             recommended_courses = safe_parse_json(match.group(0))
 
-            # Store result in SQLite database
+            # Persist candidate submission in SQLite database
             try:
                 conn = sqlite3.connect(DB_FILE)
                 cursor = conn.cursor()
@@ -321,7 +322,10 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
       <title>iGOT Assessment Admin Dashboard</title>
       <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background: #f8f9fa; color: #2c3e50; }
-        h1 { color: #1a252c; }
+        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { color: #1a252c; margin: 0; }
+        .export-btn { background: #27ae60; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .export-btn:hover { background: #219653; }
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #3498db; }
         .card h3 { margin: 0 0 10px 0; color: #7f8c8d; font-size: 14px; }
@@ -334,8 +338,13 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
       </style>
     </head>
     <body>
-      <h1>🏛️ iGOT Assessment Admin Dashboard</h1>
-      <p>Real-time analytics and candidate assessment logs.</p>
+      <div class="header-container">
+        <div>
+          <h1>🏛️ iGOT Assessment Admin Dashboard</h1>
+          <p style="margin: 5px 0 0 0;">Real-time analytics and candidate assessment logs.</p>
+        </div>
+        <button class="export-btn" onclick="exportTableToCSV('candidate_submissions.csv')">📥 Export CSV</button>
+      </div>
       
       <div class="stats-grid">
         <div class="card">
@@ -353,7 +362,7 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
       </div>
 
       <h2>Candidate Submissions</h2>
-      <table>
+      <table id="submissions-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -370,28 +379,30 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
       </table>
 
       <script>
+        let rawSubmissionsData = [];
+
         async function loadAdminData() {
           try {
             const res = await fetch('/api/admin/submissions');
             const result = await res.json();
             if(result.status === 'success') {
-              const data = result.data;
-              document.getElementById('stat-total').textContent = data.length;
+              rawSubmissionsData = result.data;
+              document.getElementById('stat-total').textContent = rawSubmissionsData.length;
               
-              if(data.length > 0) {
-                const totalScore = data.reduce((acc, curr) => acc + curr.score_percentage, 0);
-                const avgScore = Math.round(totalScore / data.length);
+              if(rawSubmissionsData.length > 0) {
+                const totalScore = rawSubmissionsData.reduce((acc, curr) => acc + curr.score_percentage, 0);
+                const avgScore = Math.round(totalScore / rawSubmissionsData.length);
                 document.getElementById('stat-avg').textContent = `${avgScore}%`;
 
-                const passed = data.filter(d => d.score_percentage >= 70).length;
-                const passRate = Math.round((passed / data.length) * 100);
+                const passed = rawSubmissionsData.filter(d => d.score_percentage >= 70).length;
+                const passRate = Math.round((passed / rawSubmissionsData.length) * 100);
                 document.getElementById('stat-pass').textContent = `${passRate}%`;
               }
 
               const tbody = document.getElementById('table-body');
               tbody.innerHTML = '';
               
-              data.forEach(item => {
+              rawSubmissionsData.forEach(item => {
                 const coursesHTML = item.recommended_courses.map(c => `• ${c.title} <span class="badge">${c.competency_type}</span>`).join('<br>');
                 tbody.innerHTML += `
                   <tr>
@@ -409,6 +420,39 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
             console.error(err);
           }
         }
+
+        function exportTableToCSV(filename) {
+          if (!rawSubmissionsData || rawSubmissionsData.length === 0) {
+            alert("No data available to export.");
+            return;
+          }
+
+          let csv = [];
+          csv.push(["ID", "Candidate Name", "Detected Domain", "Score Percentage", "Timestamp", "Recommended Courses"].join(","));
+
+          rawSubmissionsData.forEach(item => {
+            const courseList = item.recommended_courses.map(c => c.title).join("; ");
+            const row = [
+              `"${item.id}"`,
+              `"${item.candidate_name.replace(/"/g, '""')}"`,
+              `"${item.detected_domain.replace(/"/g, '""')}"`,
+              `"${item.score_percentage}%"`,
+              `"${item.timestamp}"`,
+              `"${courseList.replace(/"/g, '""')}"`
+            ];
+            csv.push(row.join(","));
+          });
+
+          const csvFile = new Blob([csv.join("\\n")], { type: "text/csv" });
+          const downloadLink = document.createElement("a");
+          downloadLink.download = filename;
+          downloadLink.href = window.URL.createObjectURL(csvFile);
+          downloadLink.style.display = "none";
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+        }
+
         loadAdminData();
       </script>
     </body>
