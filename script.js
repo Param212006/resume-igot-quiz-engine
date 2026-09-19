@@ -6,8 +6,8 @@ let matchedPdfFilename = "sample_ai.pdf";
 let candidateName = "Candidate";
 let passedDomain = "AI & Machine Learning";
 
-// Replace this with your newly created Render backend URL once deployed
-const API_BASE = "https://pdf-quiz-generator-b35g.onrender.com";
+// Live Render backend URL
+const API_BASE = "https://resume-igot-quiz-engine-1.onrender.com";
 
 function shuffleArray(array) {
   const shuffled = [...array];
@@ -235,7 +235,6 @@ async function calculateScore() {
 
   document.getElementById('score-btn').style.display = 'none';
 
-  // Request iGOT Karmayogi course recommendations
   await fetchIGOTRecommendations(percentage, incorrectQuestionsList);
 }
 

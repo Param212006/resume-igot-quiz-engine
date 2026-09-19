@@ -17,7 +17,6 @@ except ImportError:
 
 app = FastAPI(title="Resume Quiz & iGOT Engine API")
 
-# Enable CORS for frontend requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,7 +65,7 @@ def extract_text_from_pdf_bytes(pdf_bytes):
 
 def call_groq_llm(prompt):
     if not client:
-        raise Exception("GROQ_API_KEY environment variable is missing.")
+        raise Exception("GROQ_API_KEY environment variable is missing on Render.")
 
     available_models = []
     try:
@@ -94,7 +93,7 @@ def call_groq_llm(prompt):
             continue
 
     if not raw_output:
-        raise Exception(f"Groq Error: {str(last_error)}")
+        raise Exception(f"Groq API Error: {str(last_error)}")
 
     return raw_output
 
