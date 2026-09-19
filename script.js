@@ -7,6 +7,7 @@ let currentUserId = "KARM-UNKNOWN";
 let candidateName = "Candidate";
 let selectedRole = "Junior Statistical Officer (JSO)";
 let passedDomain = "Official Statistical System Assessment";
+let initialCompetencyBreakdown = { statistical: 65, technical: 80, digital_governance: 55, behavioral: 70 };
 
 const API_BASE = "https://resume-igot-quiz-engine-1.onrender.com";
 
@@ -73,7 +74,7 @@ document.getElementById('resume-form').addEventListener('submit', async (e) => {
       selectedRole = a.official_role || roleInput;
       currentUserId = a.user_id || `KARM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      const cb = a.competency_breakdown || { statistical: 65, technical: 80, digital_governance: 55, behavioral: 70 };
+      initialCompetencyBreakdown = a.competency_breakdown || { statistical: 65, technical: 80, digital_governance: 55, behavioral: 70 };
       const skillsHTML = (a.key_skills || []).map(s => `<span class="badge">${s}</span>`).join(' ');
 
       document.getElementById('analysis-results').innerHTML = `
@@ -87,23 +88,23 @@ document.getElementById('resume-form').addEventListener('submit', async (e) => {
           <h4 style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 15px;">📊 MoSPI FRAC Competency Radar Evaluation</h4>
           
           <div class="competency-bar-wrapper">
-            <div class="competency-label"><span>📈 Statistical Competencies</span><span>${cb.statistical}%</span></div>
-            <div class="progress-track"><div class="progress-fill" style="width: ${cb.statistical}%;"></div></div>
+            <div class="competency-label"><span>📈 Statistical Competencies</span><span>${initialCompetencyBreakdown.statistical}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width: ${initialCompetencyBreakdown.statistical}%;"></div></div>
           </div>
 
           <div class="competency-bar-wrapper">
-            <div class="competency-label"><span>💻 Technical Competencies</span><span>${cb.technical}%</span></div>
-            <div class="progress-track"><div class="progress-fill" style="width: ${cb.technical}%; background: #3b82f6;"></div></div>
+            <div class="competency-label"><span>💻 Technical Competencies</span><span>${initialCompetencyBreakdown.technical}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width: ${initialCompetencyBreakdown.technical}%; background: #3b82f6;"></div></div>
           </div>
 
           <div class="competency-bar-wrapper">
-            <div class="competency-label"><span>🔒 Digital Governance</span><span>${cb.digital_governance}%</span></div>
-            <div class="progress-track"><div class="progress-fill" style="width: ${cb.digital_governance}%; background: #8b5cf6;"></div></div>
+            <div class="competency-label"><span>🔒 Digital Governance</span><span>${initialCompetencyBreakdown.digital_governance}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width: ${initialCompetencyBreakdown.digital_governance}%; background: #8b5cf6;"></div></div>
           </div>
 
           <div class="competency-bar-wrapper">
-            <div class="competency-label"><span>👔 Behavioral & Managerial</span><span>${cb.behavioral}%</span></div>
-            <div class="progress-track"><div class="progress-fill" style="width: ${cb.behavioral}%; background: #f59e0b;"></div></div>
+            <div class="competency-label"><span>👔 Behavioral & Managerial</span><span>${initialCompetencyBreakdown.behavioral}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width: ${initialCompetencyBreakdown.behavioral}%; background: #f59e0b;"></div></div>
           </div>
         </div>
 
@@ -284,40 +285,39 @@ async function calculateScore() {
   document.getElementById('score-btn').style.display = 'none';
   updateStepper(4);
 
-  awardBadgesAndXP(percentage);
+  renderSkillProgression(percentage);
   await fetchIGOTRecommendations(percentage, incorrectQuestionsList);
 }
 
-function awardBadgesAndXP(scorePercentage) {
-  const gamificationCard = document.getElementById('gamification-card');
-  const badgeContainer = document.getElementById('badge-container');
+function renderSkillProgression(scorePercentage) {
+  const card = document.getElementById('skill-progression-card');
+  const content = document.getElementById('progression-content');
   const reassessmentCard = document.getElementById('reassessment-card');
   
-  gamificationCard.style.display = 'block';
+  card.style.display = 'block';
   reassessmentCard.style.display = 'block';
 
-  let earnedBadges = [];
-  let earnedXP = scorePercentage * 10;
+  // Calculate re-evaluated skill score based on baseline + quiz performance weight
+  const reEvaluatedScore = Math.min(100, Math.round((initialCompetencyBreakdown.statistical * 0.4) + (scorePercentage * 0.6)));
+  const gapDelta = scorePercentage - 70; // Target passing threshold is 70%
 
-  if (scorePercentage >= 50) {
-    earnedBadges.push({ title: "📊 FRAC Baseline Cleared", color: "#3b82f6" });
-  }
-  if (scorePercentage >= 70) {
-    earnedBadges.push({ title: "🏅 Official iGOT Competent", color: "#10b981" });
-  }
-  if (scorePercentage === 100) {
-    earnedBadges.push({ title: "⭐ Statistical Mastery Elite", color: "#f59e0b" });
-  }
+  let statusBadge = scorePercentage >= 70 
+    ? `<span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: 700;">Target Competency Level Achieved (≥70%)</span>`
+    : `<span style="background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-weight: 700;">Target Gap Remaining (${Math.abs(gapDelta)}% below 70% threshold)</span>`;
 
-  badgeContainer.innerHTML = `
-    <div style="background: #ede9fe; color: #5b21b6; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 13px;">⚡ Total XP: +${earnedXP}</div>
+  content.innerHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+      <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <span style="font-size: 12px; color: #64748b; font-weight: 700;">INITIAL BASELINE (RESUME)</span>
+        <div style="font-size: 22px; font-weight: 800; color: #1e3a8a; margin-top: 4px;">${initialCompetencyBreakdown.statistical}%</div>
+      </div>
+      <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <span style="font-size: 12px; color: #64748b; font-weight: 700;">RE-EVALUATED POST-ASSESSMENT LEVEL</span>
+        <div style="font-size: 22px; font-weight: 800; color: #10b981; margin-top: 4px;">${reEvaluatedScore}%</div>
+      </div>
+    </div>
+    <div style="margin-top: 10px;">${statusBadge}</div>
   `;
-
-  earnedBadges.forEach(b => {
-    badgeContainer.innerHTML += `
-      <div style="background: ${b.color}; color: white; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 13px;">${b.title}</div>
-    `;
-  });
 }
 
 function triggerReassessment() {
@@ -363,8 +363,8 @@ function renderIGOTCards(courses) {
 
   let cardsHTML = `
     <div class="card" style="margin-top: 30px; border-left: 5px solid #10b981; background: #ffffff; padding: 24px;">
-      <h3 style="color: #1e3a8a; margin-top: 0;">🏛️ Recommended iGOT Karmayogi Learning Pathways</h3>
-      <p style="color: #64748b; font-size: 14px; margin-bottom: 18px;">Based on your missed competency concepts, Groq AI generated these targeted government modules:</p>
+      <h3 style="color: #1e3a8a; margin-top: 0;">🏛️ Recommended iGOT Karmayogi Learning Pathways (Mapped to Skill Gaps)</h3>
+      <p style="color: #64748b; font-size: 14px; margin-bottom: 18px;">Based on your re-evaluated competency level and missed domain concepts, Groq AI has assigned these targeted modules:</p>
       <div style="display: grid; gap: 16px;">
   `;
 
@@ -375,10 +375,10 @@ function renderIGOTCards(courses) {
           <h4 style="margin: 0; color: #0f172a; font-size: 16px;">${c.title}</h4>
           <span class="badge" style="background: #fee2e2; color: #991b1b;">${c.competency_type}</span>
         </div>
-        <p style="margin: 6px 0; font-size: 13px; color: #1e3a8a;"><strong>Target Skill Gap:</strong> ${c.target_skill_gap}</p>
+        <p style="margin: 6px 0; font-size: 13px; color: #1e3a8a;"><strong>Target Skill Gap Addressed:</strong> ${c.target_skill_gap}</p>
         <p style="margin: 0 0 12px 0; font-size: 13px; color: #64748b;">${c.description}</p>
         <a href="${c.portal_url}" target="_blank" style="color: #10b981; font-weight: 700; text-decoration: none; font-size: 14px;">
-          🔗 Enroll on iGOT Karmayogi Portal →
+          🔗 Enroll in Mapped Pathway on iGOT Karmayogi Portal →
         </a>
       </div>
     `;

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MoSPI Skill Intelligence Platform | iGOT Karmayogi</title>
   
-  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -18,7 +17,6 @@
       --primary: #1e3a8a;
       --primary-light: #3b82f6;
       --accent: #10b981;
-      --accent-hover: #059669;
       --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
       --card-bg: #ffffff;
       --text-dark: #0f172a;
@@ -37,15 +35,9 @@
       min-height: 100vh;
     }
 
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
+    .container { max-width: 900px; margin: 0 auto; }
 
-    .gov-header {
-      text-align: center;
-      margin-bottom: 30px;
-    }
+    .gov-header { text-align: center; margin-bottom: 30px; }
 
     .gov-badge {
       display: inline-flex;
@@ -58,22 +50,10 @@
       font-size: 13px;
       font-weight: 600;
       margin-bottom: 12px;
-      letter-spacing: 0.5px;
     }
 
-    h1 {
-      font-size: 32px;
-      font-weight: 800;
-      color: var(--text-dark);
-      margin: 0 0 8px 0;
-      letter-spacing: -0.5px;
-    }
-
-    .subtitle {
-      color: var(--text-muted);
-      font-size: 15px;
-      margin-bottom: 25px;
-    }
+    h1 { font-size: 32px; font-weight: 800; color: var(--text-dark); margin: 0 0 8px 0; }
+    .subtitle { color: var(--text-muted); font-size: 15px; margin-bottom: 25px; }
 
     .stepper {
       display: flex;
@@ -123,24 +103,9 @@
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
       margin-bottom: 24px;
-      animation: fadeIn 0.4s ease-out;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .card h3 {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--primary);
-      margin-top: 0;
-      margin-bottom: 18px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .card h3 { font-size: 18px; font-weight: 700; color: var(--primary); margin-top: 0; margin-bottom: 18px; }
 
     label { font-weight: 600; font-size: 14px; color: var(--text-dark); margin-bottom: 6px; display: block; }
 
@@ -153,12 +118,6 @@
       font-size: 14px;
       color: var(--text-dark);
       margin-bottom: 18px;
-    }
-
-    select:focus, input[type="file"]:focus {
-      outline: none;
-      border-color: var(--primary-light);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
 
     button.action-btn {
@@ -174,17 +133,8 @@
       box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
     }
 
-    button.action-btn:hover {
-      background: #1d4ed8;
-      transform: translateY(-1px);
-    }
-
-    button.action-btn:disabled {
-      background: #94a3b8;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
-    }
+    button.action-btn:hover { background: #1d4ed8; }
+    button.action-btn:disabled { background: #94a3b8; cursor: not-allowed; }
 
     .badge {
       display: inline-block;
@@ -225,7 +175,6 @@
       border-radius: 12px;
       font-size: 16px;
       font-weight: 700;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
       margin-bottom: 20px;
     }
 
@@ -239,7 +188,6 @@
       font-size: 20px;
       font-weight: 800;
       margin-bottom: 20px;
-      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
     }
 
     #error-box {
@@ -275,7 +223,6 @@
       font-size: 14px;
     }
 
-    .option-label:hover { background: #f1f5f9; }
     .option-label.correct { background: #dcfce7; border-color: #86efac; color: #166534; font-weight: 600; }
     .option-label.incorrect { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
 
@@ -341,12 +288,12 @@
     </div>
 
     <div id="error-box"></div>
-    
-    <!-- Gamification & Badges Card -->
-    <div id="gamification-card" class="card" style="display: none; border-left: 5px solid #f59e0b; background: #fffbeb;">
-      <h3 style="color: #b45309; margin-top: 0;">🏆 Official MoSPI Achievement Badges & XP</h3>
-      <p style="font-size: 13px; color: #78350f; margin-bottom: 0;">Earned through verified competency assessments and skill gap closure.</p>
-      <div id="badge-container" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;"></div>
+
+    <!-- Re-Evaluated Skill Progression Card -->
+    <div id="skill-progression-card" class="card" style="display: none; border-left: 5px solid #10b981; background: #ffffff;">
+      <h3 style="color: #1e3a8a; margin-top: 0;">📈 Re-Evaluated Skill Level & Competency Progression</h3>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Comparison between initial baseline resume evaluation and post-assessment re-evaluated skill level:</p>
+      <div id="progression-content"></div>
     </div>
 
     <!-- Re-Assessment Card -->
